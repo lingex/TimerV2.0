@@ -1,0 +1,121 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"options": {
+		"env": {
+			"win_dir": "build_windows",
+			"linux_dir": "build",
+			"osx_dir": "build_osx",
+			"opocd_dir": "D:/Program Files/OpenOCD-20201228-0.10.0/share/openocd/scripts"
+		}
+	},
+	"tasks": [
+		{
+			"label": "Clean",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"args": [
+				"clean"
+			],
+			"options": {
+				"statusbar": {
+					"hide": true
+				}
+			}
+		},
+		{
+			"label": "Build",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"args": [
+				"-j",
+				"debug=1",
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Rebuild",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"dependsOn": [
+				"Clean"
+			],
+			"args": [
+				"-j",
+				"debug=1"
+			]
+		},
+		{
+			"label": "Release",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"args": [
+				"-j",
+			],
+			"dependsOn": [
+				""
+			]
+		},
+		{
+			"label": "Download",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"args": [
+				"flash"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "ST-Flash",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"dependsOn": [
+				""
+			],
+			"args": [
+				"stflash"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "Reset",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"args": [
+				"reset",
+			]
+		},
+		{
+			//to make this work you'll need a hex2dfu tool like this: https://github.com/nanoframework/hex2dfu
+			"label": "Build with DFU",
+			"type": "shell",
+			"command": [
+				"make"
+			],
+			"args": [
+				"-j",
+				"debug=1",
+				"dfu=1"
+			],
+			"problemMatcher": []
+		}
+	]
+}

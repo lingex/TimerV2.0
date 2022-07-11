@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "cwd":"${workspaceRoot}",
+            "executable": "build/Timerv2.0.elf",
+            "name": "Openocd Debug",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": [
+                "stlink.cfg",
+                "stm32f1x.cfg"
+            ]
+        }
+    ]
+}

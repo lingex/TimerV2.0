@@ -1,0 +1,12 @@
+{
+	"stm32-for-vscode.makePath": false,
+	"files.associations": {
+		"main.h": "c",
+		"spi_flash.h": "c",
+		"lcd.h": "c",
+		"usb_device.h": "c",
+		"player.h": "c",
+		"cstdio": "c",
+		"menu.h": "c"
+	}
+}
