@@ -482,26 +482,6 @@ void OnBtnDown(uint32_t btnVal)
 	case DevStateStandby:
 	{
 		PlayerStop();
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			devState = DevStateTimerSet;
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			devState = DevStateTimerSet;
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			devState = DevStateTimerSet;
-		}
-		if ((btnVal & BTN_VAL_LEFT) != 0)
-		{
-			devState = DevStateTimerSet;
-		}
-		if ((btnVal & BTN_VAL_RIGHT) != 0)
-		{
-			devState = DevStateTimerSet;
-		}
 		if ((btnVal & BTN_VAL_ESC) != 0)
 		{
 			menuSelCur = 0;
@@ -509,6 +489,7 @@ void OnBtnDown(uint32_t btnVal)
 		}
 		else
 		{
+			devState = DevStateTimerSet;
 			menuSelCur = 1;	//timer default point to the min
 		}
 	}
