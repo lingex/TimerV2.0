@@ -8,6 +8,7 @@
 		"player.h": "c",
 		"cstdio": "c",
 		"menu.h": "c",
-		"time.h": "c"
+		"time.h": "c",
+		"typeinfo": "c"
 	}
 }

@@ -29,7 +29,7 @@
 #include "lcd.h"
 #include "rx8025t.h"
 #include "menu.h"
-#include "time.h"
+#include <time.h>
 #include <stdio.h>
 #include "config.h"
 
@@ -75,15 +75,12 @@ DMA_HandleTypeDef hdma_spi3_rx;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-volatile uint32_t btnVal = 0;
-volatile uint8_t usbDet = 0;
+__IO uint32_t btnVal = 0;
+__IO uint8_t usbDet = 0;
 uint32_t batVoltage = 0;
-uint8_t musicIndex = 0;
 uint8_t musicVolume = 95;
 DevState_t devState = DevStateStandby;
-extern uint8_t playing;
-extern USBD_HandleTypeDef hUsbDeviceFS;
-__IO WKUP_REASON_t wkupReason = WKUP_REASON_POWER;
+__IO uint32_t wkupReason = WKUP_REASON_POWER;
 RTC_WKUP_INTERVAL_t wkupInterval = RTC_WKUP_SEC;
 uint32_t currTime = 0;
 uint32_t lcdBLTimeout = 0;
@@ -94,8 +91,8 @@ uint8_t lcdUpdate = 0;
 FATFS FatFs;
 u8g2_t u8g2;
 char tmpstr[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-const char *music[] = {"Take my breath away.mp3", "Woman In Love.mp3", "ph.mp3", "pp.mp3", "mm.mp3", "cc.mp3"};
 char musicUsing[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+const char *builtTime = __DATE__ "," __TIME__;
 
 uint8_t musicSize = 0;
 char musicList[MUSIC_MAX][MUSIC_FILE_NAME_LEN] = {'\0'};
@@ -105,6 +102,11 @@ _RTC rtc = {
 
 _COUNTER runCounter = {
 	.Hour = 0, .Min = 5, .Sec = 0};
+
+
+extern uint8_t playing;
+extern USBD_HandleTypeDef hUsbDeviceFS;
+
 
 /* USER CODE END PV */
 
@@ -131,14 +133,12 @@ uint32_t GetBatAdc(void);
 void TimerProcess(void);
 void Sleep(void);
 
-uint8_t GetConfigVolume(void);
-void SetConfigVolume(uint8_t volume);
+void SaveConfigs(void);
 
-void SetConfigMusicName(void);
-void GetConfigMusicName(void);
-
-
+void RtcToTimestamp(void);
 void RtcToTm(_RTC *rtc, struct tm *t);
+
+void TimestampToRTC(void);
 
 void PlayerStartCallback(void);
 void PlayerStopCallback(void);
@@ -193,6 +193,10 @@ int main(void)
   MX_FATFS_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+	printf("Starting, tick: %lu.\n", HAL_GetTick());
+	printf("Hardware: %s.\n", HARDWARE_VERSION);
+	printf("Firmware: %s.\n", FIRMWARE_VERSION);
+	printf("Built: %s.\n\n", builtTime);
 
 	LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
 	usbDet = USB_DET;
@@ -200,7 +204,7 @@ int main(void)
 	{
 		USB_EN(1);
 	}
-
+	printf("Init LCD, tick: %lu.\n", HAL_GetTick());
 	u8g2Init(&u8g2);
 	u8g2_DrawLine(&u8g2, 0, 11, 127, 11);
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
@@ -209,35 +213,42 @@ int main(void)
 	u8g2_SendBuffer(&u8g2);
 	HAL_Delay(200);
 
+	printf("Init FATFS, tick: %lu.\n", HAL_GetTick());
 	FRESULT rc = f_mount(&FatFs, "", 0);
 	if (rc != FR_OK)
 	{
-		return rc;
+		printf("FATFS mount failed! tick: %lu.\n", HAL_GetTick());
+		//return rc;
 	}
-	InitConfig();
+	printf("Init config, tick: %lu.\n", HAL_GetTick());
+	LoadConfigs();
+	PlayerVolumeAdj(musicVolume);
 	//LoadFileListing();
 
-#if 0 //json save debug
+#if 1 //json save debug
 
-	strcpy(musicUsing, "test.mp3");
-	SetConfigMusicName();
+	//strcpy(musicUsing, "test.mp3");
+	//SetConfigMusicName();
+	//SaveTest();
 #endif
-
+	printf("Init player, tick: %lu.\n", HAL_GetTick());
 	PlayerInit(&hi2s2);
 
+	printf("Init RTC, tick: %lu.\n", HAL_GetTick());
 	RX8025T_Init(&hi2c1);
 	RX8025T_SetINTPerSec();
 	// RX8025T_SetINTPerMin();
-	RX8025T_GetTime(&rtc);
 	//RX8025T_SetTime(&rtc);
-	struct tm t;
-	RtcToTm(&rtc, &t);
-	currTime = mktime(&t) - 8 * 3600;
+	RtcToTimestamp();
+	printf("Timestamp: %lu, tick: %lu.\n", currTime, HAL_GetTick());
+
 	lcdBLTimeout = currTime + 10;
 	sleepTimeout = currTime + 20;
-	
-	BatteryVoltage();
 
+	BatteryVoltage();
+	printf("Battery voltage: %lu mV, tick: %lu.\n\n", batVoltage, HAL_GetTick());
+
+	printf("Loop start, tick: %lu.\n\n", HAL_GetTick());
 	//DispUpdate();
 
 	//PlayerStart("test.MP3");
@@ -253,79 +264,74 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	switch (wkupReason)
+	if (wkupReason != 0)
 	{
-	case WKUP_REASON_BTN:
-		lcdBLTimeout = currTime + 10;
-		LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
-		if (wkupInterval != RTC_WKUP_SEC)
+		if ((wkupReason & WKUP_REASON_BTN) != 0)
 		{
-			wkupInterval = RTC_WKUP_SEC;
-			RX8025T_SetINTPerSec();
-		}
-		OnBtnDown(btnVal);
-		if (devState == DevStateTimerRun || devState == DevStateTimerPause || devState == DevStateMenuMusic)
-		{
-			menuTimeout = 0;
-		}
-		else
-		{
-			menuTimeout = currTime + 10;
-		}
-		btnVal = 0;
-		lcdUpdate = 1;
-		break;
-	case WKUP_REASON_USB:
-		lcdBLTimeout = currTime + 10;
-		LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
-		if (usbDet == 1)
-		{
-			devState = DevStateStandby;
-			if (W25QXX_GetPowerState() == 0)
+			lcdBLTimeout = currTime + 10;
+			LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
+			if (wkupInterval != RTC_WKUP_SEC)
 			{
-				W25QXX_WAKEUP();
+				wkupInterval = RTC_WKUP_SEC;
+				RX8025T_SetINTPerSec();
 			}
-			USB_EN(1);
-		}
-		else
-		{
-			USB_EN(0);
-			if (W25QXX_GetPowerState() != 0 && playing == 0)
+			OnBtnDown(btnVal);
+			if (devState == DevStateTimerRun || devState == DevStateTimerPause || devState == DevStateMenuMusic)
 			{
-				W25QXX_PowerDown();
+				menuTimeout = 0;
 			}
+			else
+			{
+				menuTimeout = currTime + 10;
+			}
+			btnVal = 0;
+			lcdUpdate = 1;
 		}
-		lcdUpdate = 1;
-		break;
-	case WKUP_REASON_RTC:
-	{
-		uint32_t procStart = HAL_GetTick();
-
-		RX8025T_GetTime(&rtc);
-		struct tm t;
-		RtcToTm(&rtc, &t);
-		currTime = mktime(&t) - 8 * 3600;
-#if 1 // debug
-		sprintf(tmpstr, "TS: %lu, battery:%d, tick:%lu.\n", currTime, batVoltage, HAL_GetTick());
-		HAL_UART_Transmit(&huart2, (uint8_t *)tmpstr, strlen(tmpstr), 100);
+		if ((wkupReason & WKUP_REASON_USB) != 0)
+		{
+			lcdBLTimeout = currTime + 10;
+			LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
+			if (usbDet == 1)
+			{
+				devState = DevStateStandby;
+				if (W25QXX_GetPowerState() == 0)
+				{
+					W25QXX_WAKEUP();
+				}
+				USB_EN(1);
+			}
+			else
+			{
+				USB_EN(0);
+				if (W25QXX_GetPowerState() != 0 && playing == 0)
+				{
+					W25QXX_PowerDown();
+				}
+			}
+			lcdUpdate = 1;
+		}
+		if ((wkupReason & WKUP_REASON_RTC) != 0)
+		{
+#if 0	//counter
+			currTime++;
+			TimestampToRTC();
+#else	//RTC
+			RtcToTimestamp();
 #endif
-		if (devState == DevStateTimerRun)
-		{
-			TimerProcess();
+			if (devState == DevStateTimerRun)
+			{
+				TimerProcess();
+			}
+			//BatteryVoltage();
+			lcdUpdate = 1;
 		}
-		BatteryVoltage();
-		lcdUpdate = 1;
-		sprintf(tmpstr, "rtc trace, tickCost:%lu.\n", HAL_GetTick() - procStart);
-		HAL_UART_Transmit(&huart2, (uint8_t *)tmpstr, strlen(tmpstr), 100);
+		if ((wkupReason & WKUP_REASON_POWER) != 0)
+		{
+			lcdUpdate = 1;
+		}
+		wkupReason = 0;
 	}
-		break;
-	case WKUP_REASON_POWER:
-		lcdUpdate = 1;
-		break;
-	default:
-		break;
-	}
-	wkupReason = WKUP_REASON_NONE;
+
 	if (lcdBLTimeout > 0 && currTime >= lcdBLTimeout)
 	{
 		lcdBLTimeout = 0;
@@ -350,24 +356,20 @@ int main(void)
 	}
 	if (lcdUpdate != 0)
 	{
-		uint32_t procStart = HAL_GetTick();
+		//uint32_t procStart = HAL_GetTick();
 		lcdUpdate = 0;
 		DispUpdate();
-
-		sprintf(tmpstr, "lcd trace, tickCost:%lu.\n", HAL_GetTick() - procStart);
-		HAL_UART_Transmit(&huart2, (uint8_t *)tmpstr, strlen(tmpstr), 100);
+#if 0 // debug
+		printf("lcd trace, tickCost:%lu.\n", HAL_GetTick() - procStart);
+#endif
 	}
 	if (playing != 0)
 	{
 		PlayerUpdate();
 	}
 
-	if (playing == 0 && usbDet == 0)
+	if (playing == 0/* && usbDet == 0*/)
 	{
-#if 1 // debug
-		sprintf(tmpstr, "S: %02d:%02d:%02d, battery:%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
-		HAL_UART_Transmit(&huart2, (uint8_t *)tmpstr, strlen(tmpstr), 100);
-#endif
 		switch (devState)
 		{
 		case DevStateStandby:
@@ -375,6 +377,7 @@ int main(void)
 			break;
 		case DevStateAlarm:
 			//devState = DevStateSleep;
+			break;
 		case DevStateSleep:
 			LCD_BACKLIGHT(BL_BRIGHTNESS_OFF);
 			if (wkupInterval != RTC_WKUP_MIN)
@@ -384,18 +387,18 @@ int main(void)
 			}
 			if (W25QXX_GetPowerState() != 0)
 			{
-				W25QXX_PowerDown();
+				//W25QXX_PowerDown();
 			}
 			break;
 		default:
 			break;
 		}
-		Sleep();
-
-#if 1 // debug
-		sprintf(tmpstr, "W: %02d:%02d:%02d, battery:%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
-		HAL_UART_Transmit(&huart2, (uint8_t *)tmpstr, strlen(tmpstr), 100);
-#endif
+		if (usbDet == 0)
+		{
+			printf("Sleep: %lu, battery:%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
+			Sleep();
+			printf("Wkup: %02d:%02d:%02d, battery:%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
+		}
 	}
   }
   /* USER CODE END 3 */
@@ -904,35 +907,35 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	switch (GPIO_Pin)
 	{
 	case RTC_INT_Pin:
-		wkupReason = WKUP_REASON_RTC;
+		wkupReason |= WKUP_REASON_RTC;
 		break;
 	case USB_DET_Pin:
 		usbDet = USB_DET;
-		wkupReason = WKUP_REASON_USB;
+		wkupReason |= WKUP_REASON_USB;
 		break;
 	case BTN_0_Pin:
 		btnVal |= BTN_VAL_GO;
-		wkupReason = WKUP_REASON_BTN;
+		wkupReason |= WKUP_REASON_BTN;
 		break;
 	case BTN_1_Pin:
 		btnVal |= BTN_VAL_UP;
-		wkupReason = WKUP_REASON_BTN;
+		wkupReason |= WKUP_REASON_BTN;
 		break;
 	case BTN_2_Pin:
 		btnVal |= BTN_VAL_RIGHT;
-		wkupReason = WKUP_REASON_BTN;
+		wkupReason |= WKUP_REASON_BTN;
 		break;
 	case BTN_3_Pin:
 		btnVal |= BTN_VAL_DOWN;
-		wkupReason = WKUP_REASON_BTN;
+		wkupReason |= WKUP_REASON_BTN;
 		break;
 	case BTN_4_Pin:
 		btnVal |= BTN_VAL_LEFT;
-		wkupReason = WKUP_REASON_BTN;
+		wkupReason |= WKUP_REASON_BTN;
 		break;
 	case BTN_5_Pin:
 		btnVal |= BTN_VAL_ESC;
-		wkupReason = WKUP_REASON_BTN;
+		wkupReason |= WKUP_REASON_BTN;
 		break;
 
 	default:
@@ -1015,7 +1018,7 @@ void TimerProcess(void)
 					devState = DevStateAlarm;
 					u8g2_ClearBuffer(&u8g2);
 					u8g2_SendBuffer(&u8g2);
-					PlayerStart(music[musicIndex]);
+					PlayerStart(musicUsing);
 					//DispAlarm();
 				}
 				else
@@ -1079,8 +1082,6 @@ void GoDfu()
 
 void Sleep(void)
 {
-	wkupReason = WKUP_REASON_NONE;
-
 #if 0
 	//if (usbDet != 0)
 	{
@@ -1098,8 +1099,7 @@ void Sleep(void)
 
 	if (usbDet == 0 && batVoltage < 3450 && 0) // about 3.45V
 	{
-		sprintf(tmpstr, "Low battery, adc:%d, tick:%lu.\n", batVoltage, HAL_GetTick());
-		HAL_UART_Transmit(&huart2, (uint8_t *)tmpstr, strlen(tmpstr), 100);
+		printf("Low battery, adc:%d, tick:%lu.\n", batVoltage, HAL_GetTick());
 
 		// low battery
 		__disable_irq();
@@ -1215,9 +1215,12 @@ void SetConfigVolume(uint8_t volume)
 	HAL_PWR_DisableBkUpAccess();
 }
 
-void SetConfigMusicName(void)
+void RtcToTimestamp(void)
 {
-	SaveMusicConfig();
+	RX8025T_GetTime(&rtc);
+	struct tm t;
+	RtcToTm(&rtc, &t);
+	currTime = mktime(&t) - 8 * 3600;
 }
 
 void RtcToTm(_RTC *rtc, struct tm *t)
@@ -1228,9 +1231,22 @@ void RtcToTm(_RTC *rtc, struct tm *t)
 	t->tm_hour = rtc->Hour;
 	t->tm_min = rtc->Min;
 	t->tm_sec = rtc->Sec;
-	//t->tm_wday = rtc->DaysOfWeek;
-	//t->tm_yday = 0;//(mon_yday[IsLeap((int)rtc->Year + 2000)][rtc->Month] + rtc->Date - 1) * 24 * 3600;
-	//t->tm_isdst = -1;	// Is DST on? 1 = yes, 0 = no, -1 = unknown
+}
+
+void TimestampToRTC(void)
+{
+	time_t rawtime = currTime;
+	struct tm * timeinfo;
+
+	time (&rawtime);
+	timeinfo = localtime (&rawtime);
+	rtc.Year = timeinfo->tm_year - 2000;
+	rtc.Month = timeinfo->tm_mon;
+	rtc.Date = timeinfo->tm_mday;
+	rtc.DaysOfWeek = timeinfo->tm_wday;
+	rtc.Hour = timeinfo->tm_hour;
+	rtc.Min = timeinfo->tm_min;
+	rtc.Sec = timeinfo->tm_sec;
 }
 
 void PlayerStartCallback(void)
@@ -1239,8 +1255,9 @@ void PlayerStartCallback(void)
 	{
 		W25QXX_WAKEUP();
 	}
-	
+
 }
+
 void PlayerStopCallback(void)
 {
 	if (devState == DevStateMenuMusic)
@@ -1259,17 +1276,21 @@ void PlayerStopCallback(void)
 	}
 }
 
+//load mp3 file list
 void LoadFileListing() 
 {
 	DIR rootdir;
-	FILINFO finfo;
+	static FILINFO finfo;
 	FRESULT res = FR_OK;
 
+#if 0	// init once
 	if (musicSize > 0)
 	{
 		return;
 	}
-
+#else //dynamic refresh
+	musicSize = 0;
+#endif
 	uint8_t oPowerState = W25QXX_GetPowerState();
 	if (oPowerState == 0)
 	{
@@ -1289,15 +1310,14 @@ void LoadFileListing()
 
 		if (finfo.fattrib & AM_DIR)
 		{
+			//printf("found directory %s\r\n", finfo.fname);
 			continue;
-
-			printf("found directory %s\r\n", finfo.fname);
 		}
-		printf("found file %s\r\n", finfo.fname);
+		//printf("found file %s\r\n", finfo.fname);
 
 		if ((strstr(finfo.fname, ".mp3") || strstr(finfo.fname, ".MP3")) && !strstr(finfo.fname, "test.mp3"))
 		{
-			printf("mp3 file: %s\r\n", finfo.lfname);
+			//printf("mp3 file: %s\r\n", finfo.lfname);
 			strcpy(musicList[musicSize], finfo.lfname);
 			musicSize++;
 			if (musicSize >= MUSIC_MAX)
@@ -1307,9 +1327,9 @@ void LoadFileListing()
 		}
 	}
 	f_closedir(&rootdir);
-	printf("done reading rootdir\r\n");
+	//printf("done reading rootdir\r\n");
 
-	printf("Music size: %u\r\n", musicSize);
+	//printf("Music size: %u\r\n", musicSize);
 	if (oPowerState == 0)
 	{
 		W25QXX_PowerDown();

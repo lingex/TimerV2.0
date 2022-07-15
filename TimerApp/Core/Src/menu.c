@@ -22,9 +22,8 @@ static _COUNTER counter = {
 	.Hour = 0, .Min = 5, .Sec = 0};
 
 const char *testWave = "test.MP3";
-
 const char *dowStr[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Err"};
-const char *builtTime = __DATE__ "," __TIME__;
+
 
 // title text in the middle
 static const char *menuStr[] =
@@ -75,8 +74,7 @@ static uint8_t csPosVec[] = {12, 31, 48, 72, 90, 108};	//clock setting cursor
 static uint8_t tsPosVec[] = {20, 60, 100};	//timer setting cursor
 
 
-extern void SetConfigVolume(uint8_t volume);
-extern void SetConfigMusicName(void);
+extern void SaveConfigs(void);
 extern void LoadFileListing(void);
 
 void DispMenuCursor(uint8_t x, uint8_t y)
@@ -919,7 +917,7 @@ void OnBtnDown(uint32_t btnVal)
 			if (musicSize > 0)
 			{
 				strcpy(musicUsing, musicList[menuSelCur]);
-				SetConfigMusicName();
+				SaveConfigs();
 			}
 		}
 	}
@@ -961,8 +959,8 @@ void OnBtnDown(uint32_t btnVal)
 			devState = DevStateMenuMain;
 			menuSelCur = 2;
 			//WriteEEPROM(SETTING_MUSIC_VOLUME_ADDR, musicVolume);
-			SetConfigVolume(musicVolume);
 			PlayerVolumeAdj(musicVolume);
+			SaveConfigs();
 		}
 	}
 	break;

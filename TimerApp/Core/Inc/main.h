@@ -134,16 +134,6 @@ void GoDfu();
 
 	typedef enum
 	{
-		WKUP_REASON_NONE = 0,
-		WKUP_REASON_POWER,
-		WKUP_REASON_BTN,
-		WKUP_REASON_RTC,
-		WKUP_REASON_USB,
-
-	} WKUP_REASON_t;
-
-	typedef enum
-	{
 		RTC_WKUP_SEC = 0,
 		RTC_WKUP_MIN,
 	} RTC_WKUP_INTERVAL_t;
@@ -171,9 +161,15 @@ void GoDfu();
 #define BTN_VAL_LEFT 	0x0010
 #define BTN_VAL_RIGHT 	0x0020
 
+#define WKUP_REASON_POWER 0x0001
+#define WKUP_REASON_BTN   0x0002
+#define WKUP_REASON_RTC   0x0004
+#define WKUP_REASON_USB   0x0008
+
 
 #define HARDWARE_VERSION "V2.0"
-#define FIRMWARE_VERSION "V1.0"
+#define FIRMWARE_VERSION "V0.5"
+extern const char *builtTime;
 
 #define APP_BOOTLOADER_ADDR (FLASH_BASE | 0x0000)
 #define APP_TIMER_ADDR (FLASH_BASE | 0x10000)

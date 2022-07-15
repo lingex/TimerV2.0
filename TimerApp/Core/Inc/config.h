@@ -6,11 +6,10 @@
 #define CONFIG_BUFF_SIZE (1024 * 1)
 
 
-void InitConfig();
+void LoadConfigs(void);
 
-void SaveVolumeConfig();
+void SaveConfigs(void);
 
-void SaveMusicConfig();
-
+void SaveTest(void);
 
 #endif //__CONFIG_H__

@@ -16,7 +16,7 @@ const char* configName = "config.json";
 
 cJSON *json = NULL;
 
-void InitConfig()
+void LoadConfigs(void)
 {
 	FIL cjfil;
 
@@ -58,44 +58,87 @@ void InitConfig()
 	f_close(&cjfil);
 }
 
-void SaveVolumeConfig()
+void SaveConfigs(void)
 {
 	FIL cjfil;
 
-	int rc = f_open(&cjfil, configName, FA_READ | FA_WRITE);
-	UINT read = 0;
-	if (rc == FR_OK && f_read(&cjfil, dataBuff, CONFIG_BUFF_SIZE, &read) == FR_OK)
+	int rc = f_open(&cjfil, configName, FA_READ| FA_WRITE | FA_CREATE_ALWAYS);
+	if (rc == FR_OK)
 	{
-		json = cJSON_Parse(dataBuff);
+		cJSON *json = cJSON_CreateObject();
 		if (json != NULL)
 		{
-			//debug
-			//char *string = cJSON_Print(json);
-			//printf("%s", string);
-			cJSON *pVolume = cJSON_GetObjectItem(json, "volume");
-			if (pVolume != NULL)
+			cJSON *pMusic = NULL;
+			cJSON *pVol = NULL;
+			cJSON *pDef = NULL;
+
+			pMusic = cJSON_CreateString(musicUsing);
+			if (pMusic != NULL)
 			{
-				cJSON_SetNumberValue(pVolume, musicVolume);
+				/* after creation was successful, immediately add it to the monitor,
+				* thereby transferring ownership of the pointer to it */
+				cJSON_AddItemToObject(json, "music", pMusic);
 			}
-			else
+			pVol = cJSON_CreateNumber(musicVolume);
+			if (pVol != NULL)
 			{
-				cJSON_AddNumberToObject(json, "volume", musicVolume);
+				cJSON_AddItemToObject(json, "volume", pVol);
 			}
+			pDef = cJSON_CreateString(defaultMusic);
+			if (pDef != NULL)
+			{
+				cJSON_AddItemToObject(json, "default", pDef);
+			}
+			char* out = cJSON_Print(json);
+			f_printf(&cjfil, "%s", out);
+			//f_puts(out, &cjfil);
+			cJSON_Delete(json);
+			free(out);
 		}
-		cJSON_Delete(json);
-		UINT bytesBeWritten = 0;
-		f_write(&cjfil, dataBuff, cjfil.fsize, &bytesBeWritten);
 		f_close(&cjfil);
 	}
 }
 
-void SaveMusicConfig()
+
+void SaveTest(void)
 {
 	FIL cjfil;
 
-	int rc = f_open(&cjfil, configName, FA_READ | FA_WRITE);
+	//int rc = f_open(&cjfil, "test.json", FA_READ| FA_WRITE);
+	int rc = f_open(&cjfil, "test.json", FA_READ| FA_WRITE | FA_CREATE_ALWAYS);
 	if (rc == FR_OK)
 	{
+		cJSON *json = cJSON_CreateObject();
+		if (json != NULL)
+		{
+			cJSON *pMusic = NULL;
+			cJSON *pVol = NULL;
+			cJSON *pDef = NULL;
+
+			pMusic = cJSON_CreateString(musicUsing);
+			if (pMusic != NULL)
+			{
+				/* after creation was successful, immediately add it to the monitor,
+				* thereby transferring ownership of the pointer to it */
+				cJSON_AddItemToObject(json, "music", pMusic);
+			}
+			pVol = cJSON_CreateNumber(musicVolume);
+			if (pVol != NULL)
+			{
+				cJSON_AddItemToObject(json, "volume", pVol);
+			}
+			pDef = cJSON_CreateString(defaultMusic);
+			if (pDef != NULL)
+			{
+				cJSON_AddItemToObject(json, "default", pDef);
+			}
+			char* out = cJSON_Print(json);
+			f_printf(&cjfil, "%s", out);
+			//f_puts(out, &cjfil);
+			cJSON_Delete(json);
+			free(out);
+		}
+#if 0
 		UINT read = 0;
 		rc = f_read(&cjfil, dataBuff, CONFIG_BUFF_SIZE, &read);
 		if (rc == FR_OK)
@@ -115,16 +158,26 @@ void SaveMusicConfig()
 				{
 					cJSON_AddStringToObject(json, "music", musicUsing);
 				}
+				cJSON *pVolume = cJSON_GetObjectItem(json, "volume");
+				if (pVolume != NULL)
+				{
+					cJSON_SetNumberValue(pVolume, musicVolume);
+				}
+				else
+				{
+					cJSON_AddNumberToObject(json, "volume", musicVolume);
+				}
 			}
 			//strcpy(dataBuff, cJSON_Print(json));
 			char* out = cJSON_Print(json);
+			//cJSON_Delete(json);
+			f_truncate(&cjfil);
+			f_printf(&cjfil, "%s", out);
+			//f_puts(out, &cjfil);
 			cJSON_Delete(json);
-			UINT bytesBeWritten = 0;
-			//f_printf(&cjfil, "%s", out);
-			f_puts(out, &cjfil);
-			f_write(&cjfil, out, cjfil.fsize, &bytesBeWritten);
 			free(out);
 		}
+#endif
 		f_close(&cjfil);
 	}
 }
