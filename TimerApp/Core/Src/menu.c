@@ -3,11 +3,10 @@
 #include "player.h"
 #include "lcd.h"
 
-extern uint16_t batAdc;
+extern uint32_t batVoltage;
 extern _RTC rtc;
 extern char tmpstr[];
-extern const char *music[];
-extern uint8_t musicIndex;
+extern char musicUsing[];
 extern uint8_t musicVolume;
 extern __IO uint8_t usbDet;
 extern u8g2_t u8g2;
@@ -77,7 +76,8 @@ static uint8_t tsPosVec[] = {20, 60, 100};	//timer setting cursor
 
 
 extern void SetConfigVolume(uint8_t volume);
-extern void SetConfigMusicIndex(uint8_t index);
+extern void SetConfigMusicName(void);
+extern void LoadFileListing(void);
 
 void DispMenuCursor(uint8_t x, uint8_t y)
 {
@@ -97,30 +97,30 @@ void DispClockSettingsCursor(uint8_t x, uint8_t y)
 	u8g2_DrawGlyph(&u8g2, x, y, 0x0062);
 }
 
-uint8_t GetBatteryIndex(uint16_t adcVal)
+uint8_t GetBatteryIndex(uint32_t voltage)
 {
 	static uint8_t lastRtcSec;
 	static uint8_t chargeStep;
 
 	uint8_t index = 0;
 
-	if (adcVal > 2005)
+	if (voltage > 4010)
 	{
 		index = 5;
 	}
-	else if (adcVal > 1980)
+	else if (voltage > 3960)
 	{
 		index = 4;
 	}
-	else if (adcVal > 1920)
+	else if (voltage > 3850)
 	{
 		index = 3;
 	}
-	else if (adcVal > 1850)
+	else if (voltage > 3700)
 	{
 		index = 2;
 	}
-	else if (adcVal > 1730)
+	else if (voltage > 3460)
 	{
 		index = 1;
 	}
@@ -181,7 +181,7 @@ void DispCommonItems()
 	// battery
 	u8g2_SetFont(&u8g2, u8g2_font_battery19_tn);
 	u8g2_SetFontDirection(&u8g2, 1);
-	u8g2_DrawGlyph(&u8g2, 108, 1, 0x0030 + GetBatteryIndex(batAdc));
+	u8g2_DrawGlyph(&u8g2, 108, 1, 0x0030 + GetBatteryIndex(batVoltage));
 	u8g2_SetFontDirection(&u8g2, 0);
 }
 
@@ -213,7 +213,7 @@ void DispSleep()
 	sprintf(tmpstr, "%s", dowStr[rtc.DaysOfWeek]);
 	u8g2_DrawStr(&u8g2, 106, 63, tmpstr);
 #else	//batval
-	sprintf(tmpstr, "%umV", batAdc * 2);
+	sprintf(tmpstr, "%umV", batVoltage);
 	u8g2_DrawStr(&u8g2, 86, 63, tmpstr);
 #endif
 	sprintf(tmpstr, (usbDet == 1) ? "ZZz" : "Zzz");
@@ -333,7 +333,7 @@ void DispAlarm()
 	sprintf(tmpstr, "Playing:");
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_DrawStr(&u8g2, 0, 24, tmpstr);
-	sprintf(tmpstr, "%s", music[musicIndex]);
+	sprintf(tmpstr, "%s", musicUsing);
 	u8g2_DrawStr(&u8g2, 0, 44, tmpstr);
 
 	sprintf(tmpstr, "%s", btnMenuStr[devState]);
@@ -407,9 +407,9 @@ void DispMusicSettings()
 	uint8_t posY = 22;
 	DispMenuCursor(posX - 12, 14 + menuSelCur * 8);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-	for (size_t i = 0; i < MUSIC_SIZE; i++)
+	for (size_t i = 0; i < musicSize; i++)
 	{
-		sprintf(tmpstr, "%s", music[i]);
+		sprintf(tmpstr, "%s", musicList[i]);
 		u8g2_DrawStr(&u8g2, posX, posY + i * 8, tmpstr);
 	}
 
@@ -527,8 +527,9 @@ void OnBtnDown(uint32_t btnVal)
 				break;
 			case 1:
 				devState = DevStateMenuMusic;
-				menuSelCur = musicIndex;
-				PlayerStart(music[menuSelCur]); // try me
+				LoadFileListing();
+				menuSelCur = 0;
+				PlayerStart(musicList[menuSelCur]); // try me
 				break;
 			case 2:
 				devState = DevStateMenuVolume;
@@ -887,7 +888,7 @@ void OnBtnDown(uint32_t btnVal)
 			devState = DevStateMenuMain;
 			menuSelCur = 1;
 		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
+		if ((btnVal & BTN_VAL_UP) != 0)
 		{
 			if (menuSelCur > 0)
 			{
@@ -895,13 +896,13 @@ void OnBtnDown(uint32_t btnVal)
 			}
 			else
 			{
-				menuSelCur = MUSIC_SIZE - 1;
+				menuSelCur = musicSize - 1;
 			}
-			PlayerStart(music[menuSelCur]); // try me
+			PlayerStart(musicList[menuSelCur]); // try me
 		}
-		if ((btnVal & BTN_VAL_UP) != 0)
+		if ((btnVal & BTN_VAL_DOWN) != 0)
 		{
-			if (menuSelCur < MUSIC_SIZE - 1)
+			if (menuSelCur < musicSize - 1)
 			{
 				menuSelCur++;
 			}
@@ -909,15 +910,17 @@ void OnBtnDown(uint32_t btnVal)
 			{
 				menuSelCur = 0;
 			}
-			PlayerStart(music[menuSelCur]); // try me
+			PlayerStart(musicList[menuSelCur]); // try me
 		}
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{
-			musicIndex = menuSelCur;
 			devState = DevStateMenuMain;
 			menuSelCur = 1;
-			SetConfigMusicIndex(musicIndex);
-			//WriteEEPROM(SETTING_MUSIC_INDEX_ADDR, musicIndex);
+			if (musicSize > 0)
+			{
+				strcpy(musicUsing, musicList[menuSelCur]);
+				SetConfigMusicName();
+			}
 		}
 	}
 	break;

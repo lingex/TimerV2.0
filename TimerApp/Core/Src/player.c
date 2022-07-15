@@ -39,7 +39,8 @@ static void VolumeScale(uint16_t* pBuffer, unsigned int samples);
 static int PlayFirstFrame(void);
 
 extern void W25QXX_WAKEUP(void);
-
+extern void PlayerStartCallback(void);
+extern void PlayerStopCallback(void);
 
 static void PlayerSetSampleRate(uint32_t audioFreq)
 {
@@ -146,8 +147,7 @@ int PlayerStart(const char *fileName)
 	{
 		PlayerStop();
 	}
-
-	W25QXX_WAKEUP();
+	PlayerStartCallback();
 
 	rc = f_open(&playingFile, fileName, FA_READ);
 
@@ -199,6 +199,7 @@ void PlayerUpdate(void)
 		{
 			printf("Stop.\n\r");
 			PlayerStop();
+			PlayerStopCallback();
 			break;
 		}
 		VolumeScale(&audioBuffer[BUFFER_SIZE/2], samples);

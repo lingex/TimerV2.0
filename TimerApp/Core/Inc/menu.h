@@ -6,7 +6,7 @@ void DispMenuCursor(uint8_t col, uint8_t line);
 
 void DispClockSettingsCursor(uint8_t col, uint8_t line);
 
-uint8_t *GetBatteryIcon(uint16_t adcVal);
+uint8_t *GetBatteryIcon(uint32_t voltage);
 
 void DispCommonItems();
 

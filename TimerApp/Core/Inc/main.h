@@ -110,6 +110,9 @@ void GoDfu();
 #define MATH_MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
+#define MUSIC_MAX 5
+#define MUSIC_FILE_NAME_LEN 32
+
 	typedef enum
 	{
 		DevStateSleep = 0,
@@ -129,6 +132,22 @@ void GoDfu();
 
 	extern DevState_t devState;
 
+	typedef enum
+	{
+		WKUP_REASON_NONE = 0,
+		WKUP_REASON_POWER,
+		WKUP_REASON_BTN,
+		WKUP_REASON_RTC,
+		WKUP_REASON_USB,
+
+	} WKUP_REASON_t;
+
+	typedef enum
+	{
+		RTC_WKUP_SEC = 0,
+		RTC_WKUP_MIN,
+	} RTC_WKUP_INTERVAL_t;
+
 	typedef struct
 	{
 		uint8_t Hour;
@@ -138,7 +157,9 @@ void GoDfu();
 
 	extern _COUNTER runCounter;
 
-#define MUSIC_SIZE 2
+	extern char musicList[MUSIC_MAX][MUSIC_FILE_NAME_LEN];
+	extern uint8_t musicSize;
+
 
 #define BL_BRIGHTNESS_ON 1
 #define BL_BRIGHTNESS_OFF 0

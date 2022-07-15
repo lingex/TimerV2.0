@@ -88,5 +88,6 @@ void W25QXX_PowerDown(void);                         // 进入掉电模式
 void W25QXX_WAKEUP(void);                            // 唤醒
 
 uint32_t W25QXX_GetSectorCount(void);                //获取 Sector 数量
+uint8_t W25QXX_GetPowerState(void);                  //获取电源状态
 
 #endif

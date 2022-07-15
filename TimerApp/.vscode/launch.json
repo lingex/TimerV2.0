@@ -2,7 +2,7 @@
     "configurations": [
         {
             "cwd":"${workspaceRoot}",
-            "executable": "build/Timerv2.0.elf",
+            "executable": "build/TimerApp.elf",
             "name": "Openocd Debug",
             "request": "launch",
             "type": "cortex-debug",

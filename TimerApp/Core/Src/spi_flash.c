@@ -20,6 +20,8 @@ uint16_t W25QXX_TYPE = W25Q16;             // 默认是W25Q16
 volatile int g_WrOver = 0;
 volatile int g_RdOver = 0;
 
+uint8_t powerState = 1;
+
 uint8_t SPI_ReadWriteByte(uint8_t TxData)
 {
   uint8_t Rxdata;
@@ -382,6 +384,7 @@ void W25QXX_PowerDown(void)
   //delay_us(3);                          // 等待TPD
 
   HAL_SPI_MspDeInit(&hspi3);
+  powerState = 0;
 }
 
 // 唤醒
@@ -393,6 +396,7 @@ void W25QXX_WAKEUP(void)
   SPI_ReadWriteByte(W25X_ReleasePowerDown);  // send W25X_PowerDown command 0xAB
   SF_CS_H;                                   // 取消片选
   //delay_us(3);                               // 等待TRES1
+  powerState = 1;
 }
 
 uint32_t W25QXX_GetSectorCount(void)
@@ -422,4 +426,9 @@ uint32_t W25QXX_GetSectorCount(void)
 		break;
 	}
 	return sectorCount;
+}
+
+uint8_t W25QXX_GetPowerState(void)
+{
+	return powerState;
 }
