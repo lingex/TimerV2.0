@@ -1039,13 +1039,18 @@ void Sleep(void)
 
 		// low battery
 		__disable_irq();
-		// LCD_Off();
+
 		u8g2_ClearBuffer(&u8g2);
 		u8g2_SendBuffer(&u8g2);
 		u8g2_SetPowerSave(&u8g2, 1);
+
+		HAL_PWR_DisableWakeUpPin( PWR_WAKEUP_PIN1);
+		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU); 
+		/* Enable WKUP pin */
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1);
+		/* Request to enter STANDBY mode (Wake Up flag is cleared in HAL_PWR_EnterSTANDBYMode function) */
 		HAL_PWR_EnterSTANDBYMode();
-		// after power down here, device has to reboot to wakeup
-		//TODO usbdet wakup config
+		// after power down here, device has to charge/reset to wakeup
 	}
 	else
 	{
