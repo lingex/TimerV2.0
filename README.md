@@ -7,7 +7,8 @@ A kittchen timer, mp3 player. STM32F103RET6, W25Q128, RX8025T, NS4168.
 # Feature
 ### *software decode mp3, i2s output.  
 ### *16MB spi flash disk.  
-### *FATFS format.
+### *FATFS format.  
+### *DFU Bootloader.  
 
 
 # note  
