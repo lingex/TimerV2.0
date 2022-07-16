@@ -53,9 +53,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void SysTickCb(void);
 int CalcDaysOfWeek(int year, int month, int date);
-void WriteEEPROM(uint32_t addr, uint32_t val);
 void GoDfu();
 /* USER CODE END EFP */
 
@@ -168,7 +166,7 @@ void GoDfu();
 
 
 #define HARDWARE_VERSION "V2.0"
-#define FIRMWARE_VERSION "V0.5"
+#define FIRMWARE_VERSION "V0.6"
 extern const char *builtTime;
 
 #define APP_BOOTLOADER_ADDR (FLASH_BASE | 0x0000)

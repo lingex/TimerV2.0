@@ -65,8 +65,6 @@ I2C_HandleTypeDef hi2c1;
 I2S_HandleTypeDef hi2s2;
 DMA_HandleTypeDef hdma_spi2_tx;
 
-RTC_HandleTypeDef hrtc;
-
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi3;
 DMA_HandleTypeDef hdma_spi3_tx;
@@ -121,7 +119,6 @@ static void MX_SPI3_Init(void);
 static void MX_DMA_Init(void);
 static void MX_CRC_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -191,7 +188,6 @@ int main(void)
   MX_CRC_Init();
   MX_USART2_UART_Init();
   MX_FATFS_Init();
-  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 	printf("Starting, tick: %lu.\n", HAL_GetTick());
 	printf("Hardware: %s.\n", HARDWARE_VERSION);
@@ -225,12 +221,6 @@ int main(void)
 	PlayerVolumeAdj(musicVolume);
 	//LoadFileListing();
 
-#if 1 //json save debug
-
-	//strcpy(musicUsing, "test.mp3");
-	//SetConfigMusicName();
-	//SaveTest();
-#endif
 	printf("Init player, tick: %lu.\n", HAL_GetTick());
 	PlayerInit(&hi2s2);
 
@@ -268,6 +258,11 @@ int main(void)
 	{
 		if ((wkupReason & WKUP_REASON_BTN) != 0)
 		{
+			if (devState == DevStateSleep)
+			{
+				RtcToTimestamp();
+			}
+
 			lcdBLTimeout = currTime + 10;
 			LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
 			if (wkupInterval != RTC_WKUP_SEC)
@@ -279,6 +274,7 @@ int main(void)
 			if (devState == DevStateTimerRun || devState == DevStateTimerPause || devState == DevStateMenuMusic)
 			{
 				menuTimeout = 0;
+				sleepTimeout = 0;
 			}
 			else
 			{
@@ -289,6 +285,7 @@ int main(void)
 		}
 		if ((wkupReason & WKUP_REASON_USB) != 0)
 		{
+			RtcToTimestamp();
 			lcdBLTimeout = currTime + 10;
 			LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
 			if (usbDet == 1)
@@ -356,12 +353,8 @@ int main(void)
 	}
 	if (lcdUpdate != 0)
 	{
-		//uint32_t procStart = HAL_GetTick();
 		lcdUpdate = 0;
 		DispUpdate();
-#if 0 // debug
-		printf("lcd trace, tickCost:%lu.\n", HAL_GetTick() - procStart);
-#endif
 	}
 	if (playing != 0)
 	{
@@ -395,9 +388,9 @@ int main(void)
 		}
 		if (usbDet == 0)
 		{
-			printf("Sleep: %lu, battery:%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
+			//printf("Sleep: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
 			Sleep();
-			printf("Wkup: %02d:%02d:%02d, battery:%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
+			//printf("Wkup: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
 		}
 	}
   }
@@ -417,11 +410,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
@@ -443,9 +435,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_ADC
-                              |RCC_PERIPHCLK_I2S2|RCC_PERIPHCLK_USB;
-  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC|RCC_PERIPHCLK_I2S2
+                              |RCC_PERIPHCLK_USB;
   PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV8;
   PeriphClkInit.I2s2ClockSelection = RCC_I2S2CLKSOURCE_SYSCLK;
   PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
@@ -591,64 +582,6 @@ static void MX_I2S2_Init(void)
   /* USER CODE BEGIN I2S2_Init 2 */
 
   /* USER CODE END I2S2_Init 2 */
-
-}
-
-/**
-  * @brief RTC Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_RTC_Init(void)
-{
-
-  /* USER CODE BEGIN RTC_Init 0 */
-
-  /* USER CODE END RTC_Init 0 */
-
-  RTC_TimeTypeDef sTime = {0};
-  RTC_DateTypeDef DateToUpdate = {0};
-
-  /* USER CODE BEGIN RTC_Init 1 */
-
-  /* USER CODE END RTC_Init 1 */
-
-  /** Initialize RTC Only
-  */
-  hrtc.Instance = RTC;
-  hrtc.Init.AsynchPrediv = RTC_AUTO_1_SECOND;
-  hrtc.Init.OutPut = RTC_OUTPUTSOURCE_NONE;
-  if (HAL_RTC_Init(&hrtc) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /* USER CODE BEGIN Check_RTC_BKUP */
-
-  /* USER CODE END Check_RTC_BKUP */
-
-  /** Initialize RTC and set the Time and Date
-  */
-  sTime.Hours = 0x0;
-  sTime.Minutes = 0x0;
-  sTime.Seconds = 0x0;
-
-  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
-  DateToUpdate.Month = RTC_MONTH_JANUARY;
-  DateToUpdate.Date = 0x1;
-  DateToUpdate.Year = 0x0;
-
-  if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN RTC_Init 2 */
-
-  /* USER CODE END RTC_Init 2 */
 
 }
 
@@ -901,7 +834,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (GPIO_Pin != RTC_INT_Pin)
 	{
-		printf("EXTI: %lu\r\n", HAL_GetTick());
+		//printf("EXTI: %lu\r\n", HAL_GetTick());
 	}
 
 	switch (GPIO_Pin)
@@ -974,15 +907,15 @@ uint32_t GetBatAdc(void)
 int CalcDaysOfWeek(int year, int month, int date)
 {
 	/*
-	蔡勒公式�????????????????
+	蔡勒公式�??????????????????????
 
 	W = [C/4] - 2C + y + [y/4] + [13 * (M+1) / 5] + d - 1
 
-	C 是世纪数减一，y 是年份后两位，M 是月份，d 是日数�??1 月和 2 月要按上�????????????????年的 13 月和
-	14 月来算，这时 C�???????????????? y均按上一年取值�??
+	C 是世纪数减一，y 是年份后两位，M 是月份，d 是日数�??1 月和 2 月要按上�??????????????????????年的 13 月和
+	14 月来算，这时 C�?????????????????????? y均按上一年取值�??
 
-		两个公式中的[...]均指只取计算结果的整数部分�?�算出来的W 除以 7，余数是几就是星�????????????????
-	几�?�如果余数是 0，则为星期日�????????????????
+		两个公式中的[...]均指只取计算结果的整数部分�?�算出来的W 除以 7，余数是几就是星�??????????????????????
+	几�?�如果余数是 0，则为星期日�??????????????????????
 	*/
 	int C = 21 - 1;
 	int M = month;
@@ -1097,7 +1030,7 @@ void Sleep(void)
 		HAL_DBGMCU_DisableDBGStandbyMode();
 	}
 
-	if (usbDet == 0 && batVoltage < 3450 && 0) // about 3.45V
+	if (usbDet == 0 && batVoltage < 3450) // about 3.45V
 	{
 		printf("Low battery, adc:%d, tick:%lu.\n", batVoltage, HAL_GetTick());
 
@@ -1115,7 +1048,7 @@ void Sleep(void)
 	{
 		HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
 	}
-#if 0
+#if 1
 	SystemClock_Config();
 	// MX_DAC_Init();
 #else
@@ -1191,30 +1124,6 @@ void Sleep(void)
 	//}
 }
 
-void SysTickCb(void)
-{
-	//button_ticks();
-}
-
-uint8_t GetConfigVolume(void)
-{
-	uint8_t tmp = (uint8_t)HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR1);
-	if (tmp > 100)
-	{
-		tmp = 100;
-	}
-	
-	return tmp;
-}
-void SetConfigVolume(uint8_t volume)
-{
-	// Write Back Up Register 1 Data
-	HAL_PWR_EnableBkUpAccess();
-	// Writes a data in a RTC Backup data Register 1
-	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, volume);
-	HAL_PWR_DisableBkUpAccess();
-}
-
 void RtcToTimestamp(void)
 {
 	RX8025T_GetTime(&rtc);
@@ -1283,6 +1192,14 @@ void LoadFileListing()
 	static FILINFO finfo;
 	FRESULT res = FR_OK;
 
+/*
+When LFN feature is enabled, lfname and lfsize in the file information structure 
+must be initialized with valid value prior to use the f_readdir function.
+*/
+	char *buff = malloc(_MAX_LFN);
+	finfo.lfname = buff;
+	finfo.lfsize = _MAX_LFN;
+
 #if 0	// init once
 	if (musicSize > 0)
 	{
@@ -1318,6 +1235,11 @@ void LoadFileListing()
 		if ((strstr(finfo.fname, ".mp3") || strstr(finfo.fname, ".MP3")) && !strstr(finfo.fname, "test.mp3"))
 		{
 			//printf("mp3 file: %s\r\n", finfo.lfname);
+			if (finfo.lfsize == 0)
+			{
+				continue;
+			}
+			
 			strcpy(musicList[musicSize], finfo.lfname);
 			musicSize++;
 			if (musicSize >= MUSIC_MAX)
@@ -1327,6 +1249,7 @@ void LoadFileListing()
 		}
 	}
 	f_closedir(&rootdir);
+	free(buff);
 	//printf("done reading rootdir\r\n");
 
 	//printf("Music size: %u\r\n", musicSize);

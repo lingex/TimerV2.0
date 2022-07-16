@@ -207,7 +207,7 @@ void DispSleep()
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 
-#if 0	//week str
+#if 1	//week str
 	sprintf(tmpstr, "%s", dowStr[rtc.DaysOfWeek]);
 	u8g2_DrawStr(&u8g2, 106, 63, tmpstr);
 #else	//batval
@@ -893,13 +893,13 @@ void OnBtnDown(uint32_t btnVal)
 		}
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{
-			devState = DevStateMenuMain;
-			menuSelCur = 1;
-			if (musicSize > 0)
+			if (musicSize > 0 && menuSelCur < musicSize)
 			{
 				strcpy(musicUsing, musicList[menuSelCur]);
 				SaveConfigs();
 			}
+			devState = DevStateMenuMain;
+			menuSelCur = 1;
 		}
 	}
 	break;

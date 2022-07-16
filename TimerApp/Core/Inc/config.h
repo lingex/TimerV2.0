@@ -10,6 +10,4 @@ void LoadConfigs(void);
 
 void SaveConfigs(void);
 
-void SaveTest(void);
-
 #endif //__CONFIG_H__
