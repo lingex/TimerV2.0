@@ -287,9 +287,18 @@ int main(void)
 			RtcToTimestamp();
 			lcdBLTimeout = currTime + 10;
 			LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
+			if (wkupInterval != RTC_WKUP_SEC)
+			{
+				wkupInterval = RTC_WKUP_SEC;
+				RX8025T_SetINTPerSec();
+			}
+			if (playing == 0)
+			{
+				sleepTimeout = currTime + 10;
+				devState = DevStateStandby;
+			}
 			if (usbDet == 1)
 			{
-				devState = DevStateStandby;
 				if (W25QXX_GetPowerState() == 0)
 				{
 					W25QXX_WAKEUP();
@@ -831,11 +840,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	if (GPIO_Pin != RTC_INT_Pin)
-	{
-		//printf("EXTI: %lu\r\n", HAL_GetTick());
-	}
-
 	switch (GPIO_Pin)
 	{
 	case RTC_INT_Pin:
@@ -1125,6 +1129,7 @@ void PlayerStopCallback(void)
 			W25QXX_PowerDown();
 		}
 	}
+	wkupReason |= WKUP_REASON_POWER;
 }
 
 //load mp3 file list

@@ -854,8 +854,8 @@ void OnBtnDown(uint32_t btnVal)
 		}
 		if ((btnVal & BTN_VAL_ESC) != 0)
 		{
-			// cancel
-			devState = DevStateStandby;
+			devState = DevStateMenuMain;
+			menuSelCur = 0;
 		}
 	}
 	break;
