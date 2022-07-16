@@ -508,6 +508,14 @@ void OnBtnDown(uint32_t btnVal)
 				devState = DevStateMenuMusic;
 				LoadFileListing();
 				menuSelCur = 0;
+				for (size_t i = 0; i < musicSize; i++)
+				{
+					if (strstr(musicUsing, musicList[i]) != NULL)
+					{
+						menuSelCur = i;
+						break;
+					}
+				}
 				PlayerStart(musicList[menuSelCur]); // try me
 				break;
 			case 2:
