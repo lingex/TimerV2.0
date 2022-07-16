@@ -106,6 +106,10 @@ void Error_Handler(void);
 #define FLASH_ERASE_TIME            (uint16_t)50 
 #define FLASH_PROGRAM_TIME           (uint16_t)50
 
+#define HARDWARE_VERSION "V2.0"
+#define FIRMWARE_VERSION "V1.0"
+extern const char *builtTime;
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

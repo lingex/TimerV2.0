@@ -25,6 +25,7 @@
 #include "stdbool.h"
 #include "lcd.h"
 #include "rx8025t.h"
+#include "printf.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -84,7 +85,10 @@ uint32_t JumpAddress;
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void _putchar(char character)
+{
+	HAL_UART_Transmit(&huart2, (uint8_t*)&character, 1, 5);
+}
 /* USER CODE END 0 */
 
 /**
@@ -135,13 +139,18 @@ int main(void)
 	HAL_GPIO_WritePin(USB_EN_GPIO_Port, USB_EN_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, GPIO_PIN_RESET);
 
+	printf("Bootloader start, tick: %lu.\n", HAL_GetTick());
+	printf("Hardware: %s.\n", HARDWARE_VERSION);
+	printf("Firmware: %s.\n", FIRMWARE_VERSION);
+	printf("Built: %s.\n\n", builtTime);
+
 	u8g2Init(&u8g2);
 
 	u8g2_DrawLine(&u8g2, 0, 11, 127, 11);
 
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
 
-	sprintf(tmpstr, "Timer V2.0 DFU");
+	sprintf(tmpstr, "Timer V2.0 BL");
 	u8g2_DrawStr(&u8g2, 16, 10, tmpstr);
 	u8g2_SendBuffer(&u8g2);
 	HAL_Delay(200);
@@ -170,7 +179,7 @@ int main(void)
 		//sprintf(tmpstr, "%02d:%02d", rtc.Hour, rtc.Min);
 		//u8g2_SetFont(&u8g2, u8g2_font_osb26_tr);
 		//u8g2_DrawStr(&u8g2, 18, 44, tmpstr);
-		sprintf(tmpstr, "Timer V2.0 DFU");
+		sprintf(tmpstr, "DFU Bootloader");
 		u8g2_DrawStr(&u8g2, 16, 10, tmpstr);
 		u8g2_DrawLine(&u8g2, 0, 11, 127, 11);
 
@@ -666,15 +675,15 @@ uint16_t Get_BatAdc(void)
 int CalcDaysOfWeek(int year, int month, int date)
 {
 	/*
-	蔡勒公式�????????????????
+	蔡勒公式�?????????????????
 
 	W = [C/4] - 2C + y + [y/4] + [13 * (M+1) / 5] + d - 1
 
-	C 是世纪数减一，y 是年份后两位，M 是月份，d 是日数�??1 月和 2 月要按上�????????????????年的 13 月和
-	14 月来算，这时 C�???????????????? y均按上一年取值�??
+	C 是世纪数减一，y 是年份后两位，M 是月份，d 是日数�??1 月和 2 月要按上�?????????????????年的 13 月和
+	14 月来算，这时 C�????????????????? y均按上一年取值�??
 
-		两个公式中的[...]均指只取计算结果的整数部分�?�算出来的W 除以 7，余数是几就是星�????????????????
-	几�?�如果余数是 0，则为星期日�????????????????
+		两个公式中的[...]均指只取计算结果的整数部分�?�算出来的W 除以 7，余数是几就是星�?????????????????
+	几�?�如果余数是 0，则为星期日�?????????????????
 	*/
 	int C = 21 - 1;
 	int M = month;
