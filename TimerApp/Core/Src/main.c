@@ -44,6 +44,10 @@ typedef void (*pFunction)(void);
 
 #define USB_DET ((HAL_GPIO_ReadPin(USB_DET_GPIO_Port, USB_DET_Pin) == GPIO_PIN_SET) ? 1 : 0)
 
+#define MENU_TIMEOUT 30
+#define SLEEP_TIMEOUT 10
+#define BL_TIMEOUT 8
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -231,8 +235,8 @@ int main(void)
 	RtcToTimestamp();
 	printf("Timestamp: %lu, tick: %lu.\n", currTime, HAL_GetTick());
 
-	lcdBLTimeout = currTime + 10;
-	sleepTimeout = currTime + 20;
+	lcdBLTimeout = currTime + BL_TIMEOUT;
+	sleepTimeout = currTime + SLEEP_TIMEOUT;
 
 	BatteryVoltage();
 	printf("Battery voltage: %lu mV, tick: %lu.\n\n", batVoltage, HAL_GetTick());
@@ -255,14 +259,31 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	if (wkupReason != 0)
 	{
+		//printf("wkup:%#06x\n", wkupReason);
+
+		if ((wkupReason & WKUP_REASON_RTC) != 0)
+		{
+#if 0	//counter
+			currTime++;
+			TimestampToRTC();
+#else	//RTC
+			RtcToTimestamp();
+#endif
+			if (devState == DevStateTimerRun)
+			{
+				TimerProcess();
+			}
+			BatteryVoltage();
+			lcdUpdate = 1;
+		}
 		if ((wkupReason & WKUP_REASON_BTN) != 0)
 		{
-			if (devState == DevStateSleep)
+			if (wkupInterval != RTC_WKUP_SEC && (wkupReason & WKUP_REASON_RTC) == 0)
 			{
 				RtcToTimestamp();
 			}
 
-			lcdBLTimeout = currTime + 10;
+			lcdBLTimeout = currTime + BL_TIMEOUT;
 			LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
 			if (wkupInterval != RTC_WKUP_SEC)
 			{
@@ -270,35 +291,39 @@ int main(void)
 				RX8025T_SetINTPerSec();
 			}
 			OnBtnDown(btnVal);
-			if (devState == DevStateTimerRun || devState == DevStateTimerPause || devState == DevStateMenuMusic)
+			if (devState == DevStateTimerRun || devState == DevStateMenuMusic)
 			{
 				menuTimeout = 0;
 				sleepTimeout = 0;
 			}
 			else
 			{
-				menuTimeout = currTime + 10;
+				menuTimeout = currTime + MENU_TIMEOUT;
 			}
 			btnVal = 0;
 			lcdUpdate = 1;
 		}
 		if ((wkupReason & WKUP_REASON_USB) != 0)
 		{
+			if (devState == DevStateSleep)
+			{
+				devState = DevStateStandby;
+				menuTimeout = currTime + MENU_TIMEOUT;
+			}
 			RtcToTimestamp();
-			lcdBLTimeout = currTime + 10;
+			lcdBLTimeout = currTime + BL_TIMEOUT;
 			LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
 			if (wkupInterval != RTC_WKUP_SEC)
 			{
 				wkupInterval = RTC_WKUP_SEC;
 				RX8025T_SetINTPerSec();
 			}
-			if (playing == 0)
-			{
-				sleepTimeout = currTime + 10;
-				devState = DevStateStandby;
-			}
 			if (usbDet == 1)
 			{
+				if (playing != 0)
+				{
+					PlayerStop();
+				}
 				if (W25QXX_GetPowerState() == 0)
 				{
 					W25QXX_WAKEUP();
@@ -313,21 +338,6 @@ int main(void)
 					W25QXX_PowerDown();
 				}
 			}
-			lcdUpdate = 1;
-		}
-		if ((wkupReason & WKUP_REASON_RTC) != 0)
-		{
-#if 0	//counter
-			currTime++;
-			TimestampToRTC();
-#else	//RTC
-			RtcToTimestamp();
-#endif
-			if (devState == DevStateTimerRun)
-			{
-				TimerProcess();
-			}
-			//BatteryVoltage();
 			lcdUpdate = 1;
 		}
 		if ((wkupReason & WKUP_REASON_POWER) != 0)
@@ -345,7 +355,7 @@ int main(void)
 	if (menuTimeout > 0 && currTime >= menuTimeout)
 	{
 		menuTimeout = 0;
-		sleepTimeout = currTime + 10;
+		sleepTimeout = currTime + SLEEP_TIMEOUT;
 		devState = DevStateStandby;
 		lcdUpdate = 1;
 	}
@@ -369,37 +379,22 @@ int main(void)
 		PlayerUpdate();
 	}
 
-	if (playing == 0/* && usbDet == 0*/)
+	if (playing == 0 && usbDet == 0 && devState == DevStateSleep && wkupReason == 0)
 	{
-		switch (devState)
+		LCD_BACKLIGHT(BL_BRIGHTNESS_OFF);
+		if (wkupInterval != RTC_WKUP_MIN)
 		{
-		case DevStateStandby:
-			/* code */
-			break;
-		case DevStateAlarm:
-			//devState = DevStateSleep;
-			break;
-		case DevStateSleep:
-			LCD_BACKLIGHT(BL_BRIGHTNESS_OFF);
-			if (wkupInterval != RTC_WKUP_MIN)
-			{
-				wkupInterval = RTC_WKUP_MIN;
-				RX8025T_SetINTPerMin();
-			}
-			if (W25QXX_GetPowerState() != 0)
-			{
-				//W25QXX_PowerDown();
-			}
-			break;
-		default:
-			break;
+			wkupInterval = RTC_WKUP_MIN;
+			RX8025T_SetINTPerMin();
 		}
-		if (usbDet == 0)
+		if (W25QXX_GetPowerState() != 0)
 		{
-			//printf("Sleep: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
-			Sleep();
-			//printf("Wkup: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
+			W25QXX_PowerDown();
 		}
+
+		//printf("Sleep: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
+		Sleep();
+		//printf("Wkup: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
 	}
   }
   /* USER CODE END 3 */
@@ -840,6 +835,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+	//printf("c:%#06x\n", GPIO_Pin);
 	switch (GPIO_Pin)
 	{
 	case RTC_INT_Pin:
@@ -949,7 +945,7 @@ void TimerProcess(void)
 			{
 				if (runCounter.Hour == 0)
 				{
-					lcdBLTimeout = currTime + 5;
+					lcdBLTimeout = currTime + BL_TIMEOUT;
 					LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
 					devState = DevStateAlarm;
 					u8g2_ClearBuffer(&u8g2);
@@ -1024,9 +1020,6 @@ void Sleep(void)
 		sprintf(tmpstr, "Go to sleep:%02d:%02d:%02d, battery:%%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
 		HAL_UART_Transmit(&huart3, (uint8_t *)tmpstr, strlen(tmpstr), 100);
 	}
-
-	HAL_UART_DeInit(&huart3);
-	//HAL_DAC_DeInit(&hdac);
 #endif
 	{
 		HAL_DBGMCU_DisableDBGStopMode();
@@ -1123,12 +1116,12 @@ void PlayerStopCallback(void)
 	if (devState == DevStateMenuMusic)
 	{
 		devState = DevStateMenuMain;
-		menuTimeout = currTime + 10;
+		menuTimeout = currTime + MENU_TIMEOUT;
 	}
 	else if (devState == DevStateAlarm)
 	{
 		devState = DevStateStandby;
-		sleepTimeout = currTime + 10;
+		sleepTimeout = currTime + SLEEP_TIMEOUT;
 		if (usbDet == 0)
 		{
 			W25QXX_PowerDown();

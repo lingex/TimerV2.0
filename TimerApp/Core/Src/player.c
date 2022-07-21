@@ -44,42 +44,6 @@ extern void PlayerStopCallback(void);
 
 static void PlayerSetSampleRate(uint32_t audioFreq)
 {
-	//return;
-	uint32_t fixFreq = audioFreq;
-	switch (audioFreq)
-	{
-	case I2S_AUDIOFREQ_8K:
-		fixFreq = I2S_AUDIOFREQ_DEFAULT;
-		break;
-	case I2S_AUDIOFREQ_11K:
-		fixFreq = I2S_AUDIOFREQ_8K;
-		break;
-	case I2S_AUDIOFREQ_16K:
-		fixFreq = I2S_AUDIOFREQ_8K;
-		break;
-	case I2S_AUDIOFREQ_22K:
-		fixFreq = I2S_AUDIOFREQ_11K;
-		break;
-	case I2S_AUDIOFREQ_32K:
-		fixFreq = I2S_AUDIOFREQ_16K;
-		break;
-	case I2S_AUDIOFREQ_44K:
-		fixFreq = I2S_AUDIOFREQ_22K;
-		break;
-	case I2S_AUDIOFREQ_48K:
-		fixFreq = I2S_AUDIOFREQ_22K;
-		break;
-	case I2S_AUDIOFREQ_96K:
-		fixFreq = I2S_AUDIOFREQ_48K;
-		break;
-	case I2S_AUDIOFREQ_192K:
-		fixFreq = I2S_AUDIOFREQ_96K;
-		break;
-	default:
-		fixFreq /= 2;
-		break;
-	}
-
 #if 1
 	pI2s->Instance = SPI2;
 	pI2s->Init.Mode = I2S_MODE_MASTER_TX;
@@ -87,7 +51,7 @@ static void PlayerSetSampleRate(uint32_t audioFreq)
 	pI2s->Init.DataFormat = I2S_DATAFORMAT_16B_EXTENDED;
 	pI2s->Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
 	//pI2s->Init.AudioFreq = I2S_AUDIOFREQ_8K;
-	pI2s->Init.AudioFreq = fixFreq;
+	pI2s->Init.AudioFreq = audioFreq;
 
 	pI2s->Init.CPOL = I2S_CPOL_LOW;
 	if (HAL_I2S_Init(pI2s) != HAL_OK)
@@ -123,7 +87,7 @@ static int PlayFirstFrame(void)
 	printf("Playing sample rate: %dHz, bitrate:%dkbps \r\n", mp3Info.nSampleRateHz, mp3Info.nBitrateKbps);
 
 	//note: no need to consider about those 'Variable Bit Rate (VBR) files', this demo decoder version not supported
-	PlayerSetSampleRate(mp3Info.nSampleRateHz);
+	PlayerSetSampleRate(mp3Info.nSampleRateHz / 2);
 	PlayStream(audioBuffer, samples);
 
 	return rc;
