@@ -166,7 +166,7 @@ void GoDfu();
 
 
 #define HARDWARE_VERSION "V2.0"
-#define FIRMWARE_VERSION "V1.1"
+#define FIRMWARE_VERSION "V1.2"
 extern const char *builtTime;
 
 #define APP_BOOTLOADER_ADDR (FLASH_BASE | 0x0000)

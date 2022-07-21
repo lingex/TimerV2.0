@@ -448,9 +448,12 @@ void DispInfo()
 	DispCommonItems();
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 
-	sprintf(tmpstr, "Hardware: %s", HARDWARE_VERSION);
+	sprintf(tmpstr, "Hw: %s", HARDWARE_VERSION);
 	u8g2_DrawStr(&u8g2, 0, 24, tmpstr);
-	sprintf(tmpstr, "Firmware: %s", FIRMWARE_VERSION);
+	sprintf(tmpstr, "Fw: %s", FIRMWARE_VERSION);
+	u8g2_DrawStr(&u8g2, 68, 24, tmpstr);
+	
+	sprintf(tmpstr, "Bat: %u mV", batVoltage);
 	u8g2_DrawStr(&u8g2, 0, 34, tmpstr);
 
 	sprintf(tmpstr, "Built:");
