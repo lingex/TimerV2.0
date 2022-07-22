@@ -1141,7 +1141,7 @@ void LoadFileListing()
 When LFN feature is enabled, lfname and lfsize in the file information structure 
 must be initialized with valid value prior to use the f_readdir function.
 */
-	char *buff = malloc(_MAX_LFN);
+	char buff[_MAX_LFN];
 	finfo.lfname = buff;
 	finfo.lfsize = _MAX_LFN;
 
@@ -1194,7 +1194,7 @@ must be initialized with valid value prior to use the f_readdir function.
 		}
 	}
 	f_closedir(&rootdir);
-	free(buff);
+	//free(buff);
 	//printf("done reading rootdir\r\n");
 
 	//printf("Music size: %u\r\n", musicSize);

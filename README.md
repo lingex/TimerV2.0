@@ -13,8 +13,9 @@ A kittchen timer, mp3 player. STM32F103RET6, W25Q128, RX8025T, NS4168.
 
 # Known issues  
 ### *the USBLC6 (D1) will cost leakage when USB is not connect, can be avoid by disable the 'USB_EN' pin or simply cut the 5' pin of this component.  
-### *USB disconnect interrupt can't be detected while device in sleep mode, may fix later.  
-### *sometimes return to main UI from the setting menu without expected, may fix later.  
+### ~~*USB disconnect interrupt can't be detected while device in sleep mode, may fix later.~~  
+### ~~*sometimes return to main UI from the setting menu without expected, may fix later.~~  
+### I2S stream CLK has to be set as a half of the real sample rate.  
 
 
 # Note  
