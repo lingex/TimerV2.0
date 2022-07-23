@@ -21,7 +21,7 @@ static _RTC setRtc = {
 static _COUNTER counter = {
 	.Hour = 0, .Min = 5, .Sec = 0};
 
-const char *testWave = "test.MP3";
+const char *testFile = "test.MP3";
 const char *dowStr[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Err"};
 
 
@@ -49,7 +49,7 @@ static const char *btnMenuStr[] =
 		"",						 // standby
 		"ESC  Reset Next Start", // timer settings
 		"ESC  Reset Next Cont.", // timer pause
-		"ESC  Reset Next Pause", // timer run
+		"ESC             Pause", // timer run
 		"Esc                OK", // alarm
 		"Esc                OK", // menu
 		"Esc                OK", // time settings
@@ -70,7 +70,7 @@ static const char *mainMenuItems[] =
 		"5.USB Mode", // Disk mode
 };
 
-static uint8_t csPosVec[] = {12, 31, 48, 72, 90, 108};	//clock setting cursor
+static uint8_t csPosVec[] = {13, 32, 50, 74, 92, 109};	//clock setting cursor
 static uint8_t tsPosVec[] = {20, 60, 100};	//timer setting cursor
 
 
@@ -159,17 +159,9 @@ void DispCommonItems()
 
 	if (usbDet == 1)
 	{
-		// not enough space for this
 		u8g2_SetFont(&u8g2, u8g2_font_siji_t_6x10);
 		u8g2_DrawGlyph(&u8g2, 96, 8, 0xe00c); // USB
 
-		//u8g2_SetFont(&u8g2, u8g2_font_m2icon_9_tf);
-		//u8g2_DrawGlyph(&u8g2, 96, 9, 0x0044); // correct symbol
-		//u8g2_DrawGlyph(&u8g2, 96, 9, 0x0052); //
-
-		//u8g2_SetFont(&u8g2, u8g2_font_m2icon_9_tf); //up arrow
-		//u8g2_SetFontDirection(&u8g2, 1);
-		//u8g2_DrawGlyph(&u8g2, 97, 1, 0x0062);
 		u8g2_SetFontDirection(&u8g2, 0);
 	}
 
@@ -929,7 +921,7 @@ void OnBtnDown(uint32_t btnVal)
 				menuVolume += 10;
 			}
 			PlayerVolumeAdj(menuVolume);
-			PlayerStart(testWave); // try me
+			PlayerStart(testFile); // try me
 		}
 		if ((btnVal & BTN_VAL_DOWN) != 0)
 		{
@@ -943,7 +935,7 @@ void OnBtnDown(uint32_t btnVal)
 				menuVolume -= 10;
 			}
 			PlayerVolumeAdj(menuVolume);
-			PlayerStart(testWave); // try me
+			PlayerStart(testFile); // try me
 		}
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{

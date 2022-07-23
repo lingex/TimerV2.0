@@ -48,7 +48,7 @@ static void PlayerSetSampleRate(uint32_t audioFreq)
 	pI2s->Instance = SPI2;
 	pI2s->Init.Mode = I2S_MODE_MASTER_TX;
 	pI2s->Init.Standard = I2S_STANDARD_PHILIPS;
-	pI2s->Init.DataFormat = I2S_DATAFORMAT_16B_EXTENDED;
+	pI2s->Init.DataFormat = I2S_DATAFORMAT_16B;
 	pI2s->Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
 	//pI2s->Init.AudioFreq = I2S_AUDIOFREQ_8K;
 	pI2s->Init.AudioFreq = audioFreq;
