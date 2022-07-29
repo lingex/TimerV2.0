@@ -11,6 +11,10 @@
 #ifndef BSP_SPI_FLASH_H
 #define BSP_SPI_FLASH_H
 
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
 /* 包含头文件 ----------------------------------------------------------------*/
 #include <string.h>
 #include "main.h"
@@ -89,5 +93,9 @@ void W25QXX_WAKEUP(void);                            // 唤醒
 
 uint32_t W25QXX_GetSectorCount(void);                //获取 Sector 数量
 uint8_t W25QXX_GetPowerState(void);                  //获取电源状态
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -1,6 +1,10 @@
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
 #include "main.h"
-#include "printf.h"
-#include "string.h"
+
+typedef void(*DISPACTION)(void);
 
 void DispMenuCursor(uint8_t col, uint8_t line);
 
@@ -37,3 +41,8 @@ void DispUsbSetings();
 void OnBtnDown(uint32_t btnVal);
 
 void DispUpdate(void);
+
+
+#ifdef __cplusplus
+}
+#endif

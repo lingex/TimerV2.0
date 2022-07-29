@@ -2,6 +2,10 @@
 #ifndef __PLAYER_H_
 #define __PLAYER_H_
 
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
 #include "main.h"
 
 #define BUFFER_SIZE		(576 * 8)	//in bytes
@@ -31,5 +35,8 @@ void PlayerInit(I2S_HandleTypeDef* sI2s);
 
 void DacProcess(void* buff, int isShort, int ch, void* token);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __PLAYER_H_

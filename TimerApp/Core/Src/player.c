@@ -3,7 +3,7 @@
 #include "ff.h"
 #include "spiritMP3Dec.h"
 #include "printf.h"
-#include "lcd.h"
+#include "spi_flash.h"
 
 extern FATFS FatFs;
 
@@ -11,23 +11,14 @@ static FIL playingFile;
 uint16_t audioBuffer[BUFFER_SIZE];
 uint16_t volume = 100;	//default: 80
 
-extern u8g2_t u8g2;
-extern char tmpstr[];
-
 I2S_HandleTypeDef* pI2s = NULL;
 
 uint8_t playing = 0;
 
 #ifdef DEBUG
-extern UART_HandleTypeDef hlpuart1;
+extern UART_HandleTypeDef huart2;
 char tmpBuf[32] = {0};
 #endif
-
-const uint32_t I2SFreq[8] = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 96000};
-const uint32_t I2SPLLN[8] = {256, 429, 213, 429, 426, 271, 258, 344};
-const uint32_t I2SPLLR[8] = {5, 4, 4, 4, 4, 6, 3, 1};
-
-
 
 static volatile PlayerState_t playerState = PLAYER_STATE_IDLE;
 static TSpiritMP3Decoder decoder;
@@ -38,27 +29,24 @@ static unsigned int ReadData(void* data, unsigned int size, void* token);
 static void VolumeScale(uint16_t* pBuffer, unsigned int samples);
 static int PlayFirstFrame(void);
 
-extern void W25QXX_WAKEUP(void);
-extern void PlayerStartCallback(void);
-extern void PlayerStopCallback(void);
 
 static void PlayerSetSampleRate(uint32_t audioFreq)
 {
-#if 1
+	uint32_t freq = audioFreq / 2;
+
 	pI2s->Instance = SPI2;
 	pI2s->Init.Mode = I2S_MODE_MASTER_TX;
 	pI2s->Init.Standard = I2S_STANDARD_PHILIPS;
 	pI2s->Init.DataFormat = I2S_DATAFORMAT_16B;
 	pI2s->Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
 	//pI2s->Init.AudioFreq = I2S_AUDIOFREQ_8K;
-	pI2s->Init.AudioFreq = audioFreq;
+	pI2s->Init.AudioFreq = freq;
 
 	pI2s->Init.CPOL = I2S_CPOL_LOW;
 	if (HAL_I2S_Init(pI2s) != HAL_OK)
 	{
 		Error_Handler();
 	}
-#endif
 }
 
 static void PlayStream(uint16_t* pBuffer, uint32_t Size)
@@ -83,11 +71,11 @@ static int PlayFirstFrame(void)
 	playing = 1;
 	HAL_GPIO_WritePin(SPK_EN_GPIO_Port, SPK_EN_Pin, GPIO_PIN_SET);
 
-	VolumeScale(audioBuffer, samples);	
+	VolumeScale(audioBuffer, samples);
 	printf("Playing sample rate: %dHz, bitrate:%dkbps \r\n", mp3Info.nSampleRateHz, mp3Info.nBitrateKbps);
 
 	//note: no need to consider about those 'Variable Bit Rate (VBR) files', this demo decoder version not supported
-	PlayerSetSampleRate(mp3Info.nSampleRateHz / 2);
+	PlayerSetSampleRate(mp3Info.nSampleRateHz);
 	PlayStream(audioBuffer, samples);
 
 	return rc;
@@ -124,11 +112,6 @@ int PlayerStart(const char *fileName)
 		SpiritMP3DecoderInit(&decoder, ReadData, DacProcess, NULL);
 #endif
 		PlayFirstFrame();
-
-		sprintf(tmpstr, "%s", fileName);
-		u8g2_DrawStr(&u8g2, 0, 58, tmpstr);
-
-		u8g2_SendBuffer(&u8g2);
 	}
 	return rc;
 }
@@ -140,13 +123,10 @@ void PlayerStop(void)
 	HAL_GPIO_WritePin(SPK_EN_GPIO_Port, SPK_EN_Pin, GPIO_PIN_RESET);
 #ifdef DEBUG
 	sprintf(tmpBuf, "Tick:%lu.\n\r", HAL_GetTick());
-	HAL_UART_Transmit_DMA(&hlpuart1, (uint8_t*)tmpBuf, strlen(tmpBuf));
+	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)tmpBuf, strlen(tmpBuf));
 #endif
 
 	f_close(&playingFile);
-
-	u8g2_ClearBuffer(&u8g2);
-	u8g2_SendBuffer(&u8g2);
 }
 
 void PlayerUpdate(void)
@@ -185,7 +165,7 @@ void PlayerUpdate(void)
 		//printf("Read:%lu.\n\r", HAL_GetTick() - start);
 		uint32_t endT = HAL_GetTick();
 		sprintf(tmpBuf, "Re:%lu, tick:%lu.\n\r", endT - start, endT);
-		HAL_UART_Transmit_DMA(&hlpuart1, (uint8_t*)tmpBuf, strlen(tmpBuf));
+		HAL_UART_Transmit_DMA(&huart2, (uint8_t*)tmpBuf, strlen(tmpBuf));
 		//start = HAL_GetTick();
 #endif
 		VolumeScale(&audioBuffer[0], samples);

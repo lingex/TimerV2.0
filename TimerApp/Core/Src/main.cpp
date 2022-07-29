@@ -33,6 +33,11 @@
 #include <stdio.h>
 #include "config.h"
 
+#include <vector>
+#include <string>
+
+using namespace std;
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,8 +101,7 @@ char tmpstr[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\
 char musicUsing[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const char *builtTime = __DATE__ "," __TIME__;
 
-uint8_t musicSize = 0;
-char musicList[MUSIC_MAX][MUSIC_FILE_NAME_LEN] = {'\0'};
+vector<string> musicVec;
 
 _RTC rtc = {
 	.Year = 22, .Month = 7, .Date = 3, .DaysOfWeek = SUNDAY, .Hour = 13, .Min = 25, .Sec = 22};
@@ -204,7 +208,7 @@ int main(void)
 		USB_EN(1);
 	}
 	printf("Init LCD, tick: %lu.\n", HAL_GetTick());
-	u8g2Init(&u8g2);
+	u8g2Init(&u8g2, &hspi1);
 	u8g2_DrawLine(&u8g2, 0, 11, 127, 11);
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
 	sprintf(tmpstr, "Timer V2.0");
@@ -906,15 +910,15 @@ uint32_t GetBatAdc(void)
 int CalcDaysOfWeek(int year, int month, int date)
 {
 	/*
-	蔡勒公式�???????????????????????
+	蔡勒公式�???????????????????????
 
 	W = [C/4] - 2C + y + [y/4] + [13 * (M+1) / 5] + d - 1
 
-	C 是世纪数减一，y 是年份后两位，M 是月份，d 是日数�??1 月和 2 月要按上�???????????????????????年的 13 月和
-	14 月来算，这时 C�??????????????????????? y均按上一年取值�??
+	C 是世纪数减一，y 是年份后两位，M 是月份，d 是日数�??1 月和 2 月要按上�???????????????????????年的 13 月和
+	14 月来算，这时 C�??????????????????????? y均按上一年取值�??
 
-		两个公式中的[...]均指只取计算结果的整数部分�?�算出来的W 除以 7，余数是几就是星�???????????????????????
-	几�?�如果余数是 0，则为星期日�???????????????????????
+		两个公式中的[...]均指只取计算结果的整数部分�?�算出来的W 除以 7，余数是几就是星�???????????????????????
+	几�?�如果余数是 0，则为星期日�???????????????????????
 	*/
 	int C = 21 - 1;
 	int M = month;
@@ -1028,7 +1032,7 @@ void Sleep(void)
 
 	if (usbDet == 0 && batVoltage < 3450) // about 3.45V
 	{
-		printf("Low battery, adc:%d, tick:%lu.\n", batVoltage, HAL_GetTick());
+		printf("Low battery, adc:%lu, tick:%lu.\n", batVoltage, HAL_GetTick());
 
 		// low battery
 		__disable_irq();
@@ -1145,14 +1149,10 @@ must be initialized with valid value prior to use the f_readdir function.
 	finfo.lfname = buff;
 	finfo.lfsize = _MAX_LFN;
 
-#if 0	// init once
-	if (musicSize > 0)
-	{
-		return;
-	}
-#else //dynamic refresh
-	musicSize = 0;
-#endif
+//dynamic refresh
+
+	musicVec.clear();
+
 	uint8_t oPowerState = W25QXX_GetPowerState();
 	if (oPowerState == 0)
 	{
@@ -1185,9 +1185,9 @@ must be initialized with valid value prior to use the f_readdir function.
 				continue;
 			}
 			
-			strcpy(musicList[musicSize], finfo.lfname);
-			musicSize++;
-			if (musicSize >= MUSIC_MAX)
+			//strcpy(musicList[musicSize], finfo.lfname);
+			musicVec.push_back(finfo.lfname);
+			if (musicVec.size() >= MUSIC_MAX)
 			{
 				break;
 			}

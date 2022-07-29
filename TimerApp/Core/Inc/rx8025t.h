@@ -1,6 +1,11 @@
 #ifndef __RX8025T_H
 #define __RX8025T_H
 
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -79,5 +84,9 @@ bool RX8025T_SetINTPerMin(void);
 bool RX8025T_SetINTDisable(void);
 bool ReadRegister(uint8_t regAddr, uint8_t *value);
 bool WriteRegister(uint8_t regAddr, uint8_t value);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

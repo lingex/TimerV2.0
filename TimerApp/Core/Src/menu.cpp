@@ -2,6 +2,15 @@
 #include "rx8025t.h"
 #include "player.h"
 #include "lcd.h"
+#include <vector>
+#include <string>
+#include "printf.h"
+#include <string.h>
+#include <map>
+
+using namespace std;
+
+#define DISPLAY_OFF_WHILE_SLEEP 0
 
 extern uint32_t batVoltage;
 extern _RTC rtc;
@@ -13,7 +22,8 @@ extern u8g2_t u8g2;
 
 static uint8_t menuSelCur = 0;
 static uint8_t menuVolume = 0;
-static uint8_t lcdPower = 1;
+static uint8_t musicOffset = 0;
+static uint8_t musicSize = 0;
 
 static _RTC setRtc = {
 	.Year = 22, .Month = 7, .Date = 3, .DaysOfWeek = SUNDAY, .Hour = 20, .Min = 37, .Sec = 22};
@@ -70,17 +80,36 @@ static const char *mainMenuItems[] =
 		"5.USB Mode", // Disk mode
 };
 
+#if DISPLAY_OFF_WHILE_SLEEP
+static uint8_t lcdPower = 1;
+#endif
+
 static uint8_t csPosVec[] = {13, 32, 50, 74, 92, 109};	//clock setting cursor
 static uint8_t tsPosVec[] = {20, 60, 100};	//timer setting cursor
 
+const uint8_t musicDispMax = 5;
+extern vector<string> musicVec;
 
-extern void SaveConfigs(void);
-extern void LoadFileListing(void);
+//<devState, function>
+const map<uint8_t, DISPACTION> dispProc = {
+	{ DevStateSleep,		DispSleep },
+	{ DevStateStandby,		DispStandby },
+	{ DevStateTimerSet,		DispTimerSettings },
+	{ DevStateTimerPause,	DispTimerPause },
+	{ DevStateTimerRun,		DispTimerRun },
+	{ DevStateAlarm,		DispAlarm },
+	{ DevStateMenuMain,		DispMenu },
+	{ DevStateMenuClock,	DispClockSettings },
+	{ DevStateMenuMusic,	DispMusicSettings },
+	{ DevStateMenuVolume,	DispVolumeSettings },
+	{ DevStateMenuVersion,	DispInfo },
+	{ DevStateUsbMode,		DispUsbSetings },
+};
+const vector<uint32_t> batVolStep = { 3460, 3700, 3850, 3960, 4010 };
+
 
 void DispMenuCursor(uint8_t x, uint8_t y)
 {
-	// u8g2_SetFont(&u8g2, u8g2_font_siji_t_6x10);
-	// u8g2_DrawGlyph(&u8g2, x, y, 0xe062);
 	u8g2_SetFont(&u8g2, u8g2_font_m2icon_9_tf); //up arrow
 	u8g2_SetFontDirection(&u8g2, 1);
 	u8g2_DrawGlyph(&u8g2, x, y, 0x0062);
@@ -89,8 +118,6 @@ void DispMenuCursor(uint8_t x, uint8_t y)
 
 void DispClockSettingsCursor(uint8_t x, uint8_t y)
 {
-	// u8g2_SetFont(&u8g2, u8g2_font_siji_t_6x10);
-	// u8g2_DrawGlyph(&u8g2, x, y, 0xe060);
 	u8g2_SetFont(&u8g2, u8g2_font_m2icon_9_tf);
 	u8g2_DrawGlyph(&u8g2, x, y, 0x0062);
 }
@@ -102,25 +129,13 @@ uint8_t GetBatteryIndex(uint32_t voltage)
 
 	uint8_t index = 0;
 
-	if (voltage > 4010)
+	for (auto vol : batVolStep)
 	{
-		index = 5;
-	}
-	else if (voltage > 3960)
-	{
-		index = 4;
-	}
-	else if (voltage > 3850)
-	{
-		index = 3;
-	}
-	else if (voltage > 3700)
-	{
-		index = 2;
-	}
-	else if (voltage > 3460)
-	{
-		index = 1;
+		if (voltage >= vol)
+		{
+			break;
+		}
+		index++;
 	}
 
 	if (usbDet == 1)
@@ -132,7 +147,7 @@ uint8_t GetBatteryIndex(uint32_t voltage)
 			{
 				chargeStep = index;
 			}
-			else if (chargeStep >= 5)
+			else if (chargeStep >= batVolStep.size())
 			{
 				chargeStep = index;
 			}
@@ -161,7 +176,6 @@ void DispCommonItems()
 	{
 		u8g2_SetFont(&u8g2, u8g2_font_siji_t_6x10);
 		u8g2_DrawGlyph(&u8g2, 96, 8, 0xe00c); // USB
-
 		u8g2_SetFontDirection(&u8g2, 0);
 	}
 
@@ -177,10 +191,12 @@ void DispCommonItems()
 
 void DispSleep()
 {
-	//u8g2_SetPowerSave(&u8g2, 1);
-	//lcdPower = 0;
-	//return;
-	/*
+#if DISPLAY_OFF_WHILE_SLEEP
+	u8g2_SetPowerSave(&u8g2, 1);
+	lcdPower = 0;
+	return;
+#endif
+/*
   11:30  Zzz 4.17V
   ----------------
 	  11:30
@@ -397,9 +413,10 @@ void DispMusicSettings()
 	uint8_t posY = 22;
 	DispMenuCursor(posX - 12, 14 + menuSelCur * 8);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-	for (size_t i = 0; i < musicSize; i++)
+	uint8_t mSize = MATH_MIN(musicDispMax, (uint8_t)musicVec.size());
+	for (size_t i = 0; i < mSize; i++)
 	{
-		sprintf(tmpstr, "%s", musicList[i]);
+		sprintf(tmpstr, "%s", musicVec[i + musicOffset].c_str());
 		u8g2_DrawStr(&u8g2, posX, posY + i * 8, tmpstr);
 	}
 
@@ -500,18 +517,32 @@ void OnBtnDown(uint32_t btnVal)
 				setRtc = rtc;
 				break;
 			case 1:
+			{
 				devState = DevStateMenuMusic;
 				LoadFileListing();
 				menuSelCur = 0;
-				for (size_t i = 0; i < musicSize; i++)
+				musicOffset = 0;
+				string usingStr = string(musicUsing);
+				uint8_t index = 0;
+				for (auto music : musicVec)
 				{
-					if (strstr(musicUsing, musicList[i]) != NULL)
+					if (music == usingStr)
 					{
-						menuSelCur = i;
+						if (index > musicDispMax)
+						{
+							menuSelCur = musicDispMax - 1;
+						}
+						else
+						{
+							menuSelCur = index;
+						}
+						musicOffset = index;
 						break;
 					}
+					index++;
 				}
-				PlayerStart(musicList[menuSelCur]); // try me
+				PlayerStart(musicVec[menuSelCur].c_str()); // try me
+			}
 				break;
 			case 2:
 				devState = DevStateMenuVolume;
@@ -869,6 +900,7 @@ void OnBtnDown(uint32_t btnVal)
 		{
 			devState = DevStateMenuMain;
 			menuSelCur = 1;
+			musicVec.clear();
 		}
 		if ((btnVal & BTN_VAL_UP) != 0)
 		{
@@ -876,33 +908,36 @@ void OnBtnDown(uint32_t btnVal)
 			{
 				menuSelCur--;
 			}
-			else
+			else if (musicOffset > 0)
 			{
-				menuSelCur = musicSize - 1;
+				musicOffset--;
+				//menuSelCur = musicSize - 1;
 			}
-			PlayerStart(musicList[menuSelCur]); // try me
+			PlayerStart(musicVec[menuSelCur].c_str()); // try me
 		}
 		if ((btnVal & BTN_VAL_DOWN) != 0)
 		{
-			if (menuSelCur < musicSize - 1)
+			if (menuSelCur < musicDispMax - 1)
 			{
 				menuSelCur++;
 			}
-			else
+			else if(musicOffset < musicVec.size())
 			{
-				menuSelCur = 0;
+				musicOffset++;
+				//menuSelCur = 0;
 			}
-			PlayerStart(musicList[menuSelCur]); // try me
+			PlayerStart(musicVec[menuSelCur].c_str()); // try me
 		}
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{
 			if (musicSize > 0 && menuSelCur < musicSize)
 			{
-				strcpy(musicUsing, musicList[menuSelCur]);
+				strcpy(musicUsing, musicVec[menuSelCur].c_str());
 				SaveConfigs();
 			}
 			devState = DevStateMenuMain;
 			menuSelCur = 1;
+			musicVec.clear();
 		}
 	}
 	break;
@@ -942,7 +977,6 @@ void OnBtnDown(uint32_t btnVal)
 			musicVolume = menuVolume;
 			devState = DevStateMenuMain;
 			menuSelCur = 2;
-			//WriteEEPROM(SETTING_MUSIC_VOLUME_ADDR, musicVolume);
 			PlayerVolumeAdj(musicVolume);
 			SaveConfigs();
 		}
@@ -979,78 +1013,22 @@ void OnBtnDown(uint32_t btnVal)
 
 void DispUpdate(void)
 {
-	u8g2_ClearBuffer(&u8g2);
-
-	if (devState != DevStateSleep && lcdPower == 0 && 0)
+#if DISPLAY_OFF_WHILE_SLEEP
+	if (devState != DevStateSleep && lcdPower == 0)
 	{
 		lcdPower = 1;
 		u8g2_SetPowerSave(&u8g2, 0);
+		return;
 	}
+#endif
 
-	switch (devState)
+	u8g2_ClearBuffer(&u8g2);
+
+	auto it = dispProc.find(devState);
+	if (it != dispProc.end())
 	{
-	case DevStateSleep:
-	{
-		DispSleep();
-	}
-	break;
-	case DevStateStandby:
-	{
-		DispStandby();
-	}
-	break;
-	case DevStateTimerSet:
-	{
-		DispTimerSettings();
-	}
-	break;
-	case DevStateTimerPause:
-	{
-		DispTimerPause();
-	}
-	break;
-	case DevStateTimerRun:
-	{
-		DispTimerRun();
-	}
-	break;
-	case DevStateAlarm:
-	{
-		DispAlarm();
-	}
-	break;
-	case DevStateMenuMain:
-	{
-		DispMenu();
-	}
-	break;
-	case DevStateMenuClock:
-	{
-		DispClockSettings();
-	}
-	break;
-	case DevStateMenuMusic:
-	{
-		DispMusicSettings();
-	}
-	break;
-	case DevStateMenuVolume:
-	{
-		DispVolumeSettings();
-	}
-	break;
-	case DevStateMenuVersion:
-	{
-		DispInfo();
-	}
-	break;
-	case DevStateUsbMode:
-	{
-		DispUsbSetings();
-	}
-	break;
-	default:
-		break;
+		//return (it->second)(lcdPower);
+		(it->second)();
 	}
 	u8g2_SendBuffer(&u8g2);
 }

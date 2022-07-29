@@ -1,4 +1,4 @@
-#include "CONFIG.h"
+#include "config.h"
 #include <string.h>
 #include "ff.h"
 #include "printf.h"
@@ -43,6 +43,7 @@ void LoadConfigs(void)
 			if (pMusic != NULL && cJSON_IsString(pMusic))
 			{
 				strcpy(musicUsing, pMusic->valuestring);
+				//musicUsing = pMusic->valuestring;
 			}
 			else
 			{
@@ -50,10 +51,12 @@ void LoadConfigs(void)
 				if (pDefault != NULL && cJSON_IsString(pDefault))
 				{
 					strcpy(musicUsing, pDefault->valuestring);
+					//musicUsing = pDefault->valuestring;
 				}
 				else
 				{
 					strcpy(musicUsing, defaultMusic);
+					//musicUsing = defaultMusic;
 				}
 			}
 		}
