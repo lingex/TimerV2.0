@@ -1115,7 +1115,6 @@ void PlayerStopCallback(void)
 {
 	if (devState == DevStateMenuMusic)
 	{
-		devState = DevStateMenuMain;
 		menuTimeout = currTime + MENU_TIMEOUT;
 	}
 	else if (devState == DevStateAlarm)
