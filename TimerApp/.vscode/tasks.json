@@ -22,12 +22,12 @@
 			],
 			"options": {
 				"statusbar": {
-					"hide": true
+					"hide": false
 				}
 			}
 		},
 		{
-			"label": "Build",
+			"label": "Debug",
 			"type": "shell",
 			"command": [
 				"make"

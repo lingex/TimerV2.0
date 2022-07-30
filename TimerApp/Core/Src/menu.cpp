@@ -5,8 +5,10 @@
 #include <vector>
 #include <string>
 #include "printf.h"
+#include "ff.h"
 #include <string.h>
 #include <map>
+#include "spi_flash.h"
 
 using namespace std;
 
@@ -23,7 +25,6 @@ extern u8g2_t u8g2;
 static uint8_t menuSelCur = 0;
 static uint8_t menuVolume = 0;
 static uint8_t musicOffset = 0;
-static uint8_t musicSize = 0;
 
 static _RTC setRtc = {
 	.Year = 22, .Month = 7, .Date = 3, .DaysOfWeek = SUNDAY, .Hour = 20, .Min = 37, .Sec = 22};
@@ -88,7 +89,7 @@ static uint8_t csPosVec[] = {13, 32, 50, 74, 92, 109};	//clock setting cursor
 static uint8_t tsPosVec[] = {20, 60, 100};	//timer setting cursor
 
 const uint8_t musicDispMax = 5;
-extern vector<string> musicVec;
+vector<string> musicVec;
 
 //<devState, function>
 const map<uint8_t, DISPACTION> dispProc = {
@@ -105,7 +106,7 @@ const map<uint8_t, DISPACTION> dispProc = {
 	{ DevStateMenuVersion,	DispInfo },
 	{ DevStateUsbMode,		DispUsbSetings },
 };
-const vector<uint32_t> batVolStep = { 3460, 3700, 3850, 3960, 4010 };
+const vector<uint32_t> batVolStep = { 3450, 3700, 3850, 3950, 4000 };
 
 
 void DispMenuCursor(uint8_t x, uint8_t y)
@@ -131,7 +132,7 @@ uint8_t GetBatteryIndex(uint32_t voltage)
 
 	for (auto vol : batVolStep)
 	{
-		if (voltage >= vol)
+		if (voltage < vol)
 		{
 			break;
 		}
@@ -416,12 +417,15 @@ void DispMusicSettings()
 	uint8_t mSize = MATH_MIN(musicDispMax, (uint8_t)musicVec.size());
 	for (size_t i = 0; i < mSize; i++)
 	{
-		sprintf(tmpstr, "%s", musicVec[i + musicOffset].c_str());
+		sprintf(tmpstr, "%d.%s", i + musicOffset + 1, musicVec[i + musicOffset].c_str());
 		u8g2_DrawStr(&u8g2, posX, posY + i * 8, tmpstr);
 	}
 
 	sprintf(tmpstr, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
+
+	sprintf(tmpstr, "%d / %d", menuSelCur + musicOffset + 1, (int)musicVec.size());
+	u8g2_DrawStr(&u8g2, 50, 63, tmpstr);
 }
 
 void DispVolumeSettings()
@@ -519,7 +523,7 @@ void OnBtnDown(uint32_t btnVal)
 			case 1:
 			{
 				devState = DevStateMenuMusic;
-				LoadFileListing();
+				LoadMp3File();
 				menuSelCur = 0;
 				musicOffset = 0;
 				string usingStr = string(musicUsing);
@@ -528,20 +532,20 @@ void OnBtnDown(uint32_t btnVal)
 				{
 					if (music == usingStr)
 					{
-						if (index > musicDispMax)
+						if (index >= musicDispMax)
 						{
-							menuSelCur = musicDispMax - 1;
+							menuSelCur = musicDispMax - 1;		//stick at the last pos
+							musicOffset = index - musicDispMax + 1;
 						}
 						else
 						{
 							menuSelCur = index;
 						}
-						musicOffset = index;
 						break;
 					}
 					index++;
 				}
-				PlayerStart(musicVec[menuSelCur].c_str()); // try me
+				PlayerStart(musicVec[menuSelCur + musicOffset].c_str()); // try me
 			}
 				break;
 			case 2:
@@ -911,9 +915,8 @@ void OnBtnDown(uint32_t btnVal)
 			else if (musicOffset > 0)
 			{
 				musicOffset--;
-				//menuSelCur = musicSize - 1;
 			}
-			PlayerStart(musicVec[menuSelCur].c_str()); // try me
+			PlayerStart(musicVec[menuSelCur + musicOffset].c_str()); // try me
 		}
 		if ((btnVal & BTN_VAL_DOWN) != 0)
 		{
@@ -921,18 +924,17 @@ void OnBtnDown(uint32_t btnVal)
 			{
 				menuSelCur++;
 			}
-			else if(musicOffset < musicVec.size())
+			else if(musicOffset + menuSelCur < musicVec.size() - 1)
 			{
 				musicOffset++;
-				//menuSelCur = 0;
 			}
-			PlayerStart(musicVec[menuSelCur].c_str()); // try me
+			PlayerStart(musicVec[menuSelCur + musicOffset].c_str()); // try me
 		}
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{
-			if (musicSize > 0 && menuSelCur < musicSize)
+			if (menuSelCur + musicOffset < musicVec.size())
 			{
-				strcpy(musicUsing, musicVec[menuSelCur].c_str());
+				strcpy(musicUsing, musicVec[menuSelCur + musicOffset].c_str());
 				SaveConfigs();
 			}
 			devState = DevStateMenuMain;
@@ -1031,4 +1033,73 @@ void DispUpdate(void)
 		(it->second)();
 	}
 	u8g2_SendBuffer(&u8g2);
+}
+
+
+//load mp3 file list
+void LoadMp3File() 
+{
+	DIR rootdir;
+	static FILINFO finfo;
+	FRESULT res = FR_OK;
+
+/*
+When LFN feature is enabled, lfname and lfsize in the file information structure 
+must be initialized with valid value prior to use the f_readdir function.
+*/
+	static char buff[_MAX_LFN];
+	finfo.lfname = buff;
+	finfo.lfsize = _MAX_LFN;
+
+//dynamic refresh
+
+	musicVec.clear();
+
+	uint8_t oPowerState = W25QXX_GetPowerState();
+	if (oPowerState == 0)
+	{
+		W25QXX_WAKEUP();
+	}
+
+	if ((res = f_opendir(&rootdir, "/")) != FR_OK)
+	{
+		printf("Error opening root directory %d\r\n", res);
+		return;
+	}
+
+	while (f_readdir(&rootdir, &finfo) == FR_OK)
+	{
+		if (finfo.fname[0] == '\0') break;
+		if (finfo.fname[0] == '.') continue;
+
+		if (finfo.fattrib & AM_DIR)
+		{
+			//printf("found directory %s\r\n", finfo.fname);
+			continue;
+		}
+		//printf("found file %s\r\n", finfo.fname);
+
+		if ((strstr(finfo.fname, ".mp3") || strstr(finfo.fname, ".MP3")) && !strstr(finfo.fname, "test.mp3"))
+		{
+			//printf("mp3 file: %s\r\n", finfo.lfname);
+			if (finfo.lfsize == 0)
+			{
+				continue;
+			}
+			
+			musicVec.push_back(finfo.lfname);
+			if (musicVec.size() >= MUSIC_MAX)
+			{
+				break;
+			}
+		}
+	}
+	f_closedir(&rootdir);
+	//free(buff);
+	//printf("done reading rootdir\r\n");
+
+	if (oPowerState == 0)
+	{
+		W25QXX_PowerDown();
+	}
 }

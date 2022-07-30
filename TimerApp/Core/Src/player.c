@@ -5,8 +5,6 @@
 #include "printf.h"
 #include "spi_flash.h"
 
-extern FATFS FatFs;
-
 static FIL playingFile;
 uint16_t audioBuffer[BUFFER_SIZE];
 uint16_t volume = 100;	//default: 80

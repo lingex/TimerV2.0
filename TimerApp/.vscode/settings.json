@@ -9,6 +9,7 @@
 		"cstdio": "c",
 		"menu.h": "c",
 		"time.h": "c",
-		"typeinfo": "c"
+		"typeinfo": "c",
+		"config.h": "c"
 	}
 }

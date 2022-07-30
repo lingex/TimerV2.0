@@ -33,11 +33,6 @@
 #include <stdio.h>
 #include "config.h"
 
-#include <vector>
-#include <string>
-
-using namespace std;
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -101,8 +96,6 @@ char tmpstr[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\
 char musicUsing[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const char *builtTime = __DATE__ "," __TIME__;
 
-vector<string> musicVec;
-
 _RTC rtc = {
 	.Year = 22, .Month = 7, .Date = 3, .DaysOfWeek = SUNDAY, .Hour = 13, .Min = 25, .Sec = 22};
 
@@ -111,7 +104,6 @@ _COUNTER runCounter = {
 
 
 extern uint8_t playing;
-
 
 /* USER CODE END PV */
 
@@ -146,7 +138,6 @@ void TimestampToRTC(void);
 
 void PlayerStartCallback(void);
 void PlayerStopCallback(void);
-void LoadFileListing(void);
 
 void _putchar(char character)
 {
@@ -434,7 +425,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
@@ -615,7 +606,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -892,7 +883,7 @@ void BatteryVoltage(void)
 uint32_t GetBatAdc(void)
 {
 	uint32_t temp = 0;
-	const uint32_t fixVal = 322;
+	const uint32_t fixVal = 325;
 
 	for (uint8_t n = 0; n < 5; n++)
 	{
@@ -909,17 +900,6 @@ uint32_t GetBatAdc(void)
 // 0=sunday, 1=monday
 int CalcDaysOfWeek(int year, int month, int date)
 {
-	/*
-	蔡勒公式�???????????????????????
-
-	W = [C/4] - 2C + y + [y/4] + [13 * (M+1) / 5] + d - 1
-
-	C 是世纪数减一，y 是年份后两位，M 是月份，d 是日数�??1 月和 2 月要按上�???????????????????????年的 13 月和
-	14 月来算，这时 C�??????????????????????? y均按上一年取值�??
-
-		两个公式中的[...]均指只取计算结果的整数部分�?�算出来的W 除以 7，余数是几就是星�???????????????????????
-	几�?�如果余数是 0，则为星期日�???????????????????????
-	*/
 	int C = 21 - 1;
 	int M = month;
 	int y = year;
@@ -1134,76 +1114,6 @@ void PlayerStopCallback(void)
 	wkupReason |= WKUP_REASON_POWER;
 }
 
-//load mp3 file list
-void LoadFileListing() 
-{
-	DIR rootdir;
-	static FILINFO finfo;
-	FRESULT res = FR_OK;
-
-/*
-When LFN feature is enabled, lfname and lfsize in the file information structure 
-must be initialized with valid value prior to use the f_readdir function.
-*/
-	char buff[_MAX_LFN];
-	finfo.lfname = buff;
-	finfo.lfsize = _MAX_LFN;
-
-//dynamic refresh
-
-	musicVec.clear();
-
-	uint8_t oPowerState = W25QXX_GetPowerState();
-	if (oPowerState == 0)
-	{
-		W25QXX_WAKEUP();
-	}
-
-	if ((res = f_opendir(&rootdir, "/")) != FR_OK)
-	{
-		printf("Error opening root directory %d\r\n", res);
-		return;
-	}
-
-	while (f_readdir(&rootdir, &finfo) == FR_OK)
-	{
-		if (finfo.fname[0] == '\0') break;
-		if (finfo.fname[0] == '.') continue;
-
-		if (finfo.fattrib & AM_DIR)
-		{
-			//printf("found directory %s\r\n", finfo.fname);
-			continue;
-		}
-		//printf("found file %s\r\n", finfo.fname);
-
-		if ((strstr(finfo.fname, ".mp3") || strstr(finfo.fname, ".MP3")) && !strstr(finfo.fname, "test.mp3"))
-		{
-			//printf("mp3 file: %s\r\n", finfo.lfname);
-			if (finfo.lfsize == 0)
-			{
-				continue;
-			}
-			
-			//strcpy(musicList[musicSize], finfo.lfname);
-			musicVec.push_back(finfo.lfname);
-			if (musicVec.size() >= MUSIC_MAX)
-			{
-				break;
-			}
-		}
-	}
-	f_closedir(&rootdir);
-	//free(buff);
-	//printf("done reading rootdir\r\n");
-
-	//printf("Music size: %u\r\n", musicSize);
-	if (oPowerState == 0)
-	{
-		W25QXX_PowerDown();
-	}
-}
-
 /* USER CODE END 4 */
 
 /**
@@ -1217,6 +1127,11 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	if (HAL_GPIO_ReadPin(BTN_1_GPIO_Port, BTN_1_Pin) == GPIO_PIN_SET)	//UP
+	{
+		NVIC_SystemReset();
+	}
+	
   }
   /* USER CODE END Error_Handler_Debug */
 }

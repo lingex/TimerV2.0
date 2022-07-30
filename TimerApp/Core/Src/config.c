@@ -6,7 +6,6 @@
 //#include "cJSON_Utils.h"
 #include <stdlib.h>
 
-extern FATFS FatFs;
 static char dataBuff[CONFIG_BUFF_SIZE];
 
 extern uint8_t musicVolume;

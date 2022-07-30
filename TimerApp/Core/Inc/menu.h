@@ -42,6 +42,7 @@ void OnBtnDown(uint32_t btnVal);
 
 void DispUpdate(void);
 
+void LoadMp3File(void);
 
 #ifdef __cplusplus
 }
