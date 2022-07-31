@@ -291,6 +291,7 @@ int main(void)
 			}
 			else
 			{
+				sleepTimeout = 0;
 				menuTimeout = currTime + MENU_TIMEOUT;
 			}
 			btnVal = 0;

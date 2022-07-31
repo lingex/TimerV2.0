@@ -491,522 +491,542 @@ void DispUsbSetings()
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
+void BtnActionOnStandby(uint32_t btnVal)
+{
+	PlayerStop(pPlayer);
+	if ((btnVal & BTN_VAL_ESC) != 0)
+	{
+		menuSelCur = 0;
+		devState = DevStateMenuMain;
+	}
+	else
+	{
+		devState = DevStateTimerSet;
+		menuSelCur = 1;	//timer default point to the min
+	}
+}
+void BtnActionOnMenuMain(uint32_t btnVal)
+{
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			devState = DevStateMenuClock;
+			setRtc = rtc;
+			break;
+		case 1:
+		{
+			devState = DevStateMenuMusic;
+			LoadMp3File();
+			menuSelCur = 0;
+			musicOffset = 0;
+			string usingStr = string(musicUsing);
+			uint8_t index = 0;
+			for (auto music : musicVec)
+			{
+				if (music == usingStr)
+				{
+					if (index >= musicDispMax)
+					{
+						menuSelCur = musicDispMax - 1;		//stick at the last pos
+						musicOffset = index - musicDispMax + 1;
+					}
+					else
+					{
+						menuSelCur = index;
+					}
+					break;
+				}
+				index++;
+			}
+			PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
+		}
+			break;
+		case 2:
+			devState = DevStateMenuVolume;
+			menuVolume = musicVolume;
+			break;
+		case 3:
+			devState = DevStateMenuVersion;
+			break;
+		case 4:
+			devState = DevStateUsbMode;
+			break;
+		default:
+			devState = DevStateStandby;
+			break;
+		}
+		// menuSelCur = 0;
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+		if (menuSelCur > 0)
+		{
+			menuSelCur--;
+		}
+		else
+		{
+			menuSelCur = MAIN_MENU_SIZE - 1;
+		}
+	}
+	if ((btnVal & BTN_VAL_DOWN) != 0)
+	{
+		if (menuSelCur < MAIN_MENU_SIZE - 1)
+		{
+			menuSelCur++;
+		}
+		else
+		{
+			menuSelCur = 0;
+		}
+	}
+	if ((btnVal & BTN_VAL_ESC) != 0) // ESC
+	{
+		devState = DevStateStandby;
+	}
+}
+void BtnActionOnTimerSet(uint32_t btnVal)
+{
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		if (counter.Hour == 0 && counter.Min == 0 && counter.Sec == 0)
+		{
+			// not valid time
+			devState = DevStateStandby;
+		}
+		else
+		{
+			devState = DevStateTimerRun;
+			runCounter = counter;
+		}
+	}
+	if ((btnVal & BTN_VAL_RIGHT) != 0)
+	{
+		if (menuSelCur < 2)
+		{
+			menuSelCur++;
+		}
+		else
+		{
+			menuSelCur = 0;
+		}
+	}
+	if ((btnVal & BTN_VAL_LEFT) != 0)
+	{
+		counter.Hour = 0;
+		counter.Min = 0;
+		counter.Sec = 0;
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			counter.Hour = counter.Hour < 99 ? counter.Hour + 1 : 0;
+			break;
+		case 1:
+			counter.Min = counter.Min < 59 ? counter.Min + 1 : 0;
+			break;
+		case 2:
+			counter.Sec = counter.Sec < 59 ? counter.Sec + 1 : 0;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_DOWN) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			counter.Hour = counter.Hour > 0 ? counter.Hour - 1 : 99;
+			break;
+		case 1:
+			counter.Min = counter.Min > 0 ? counter.Min - 1 : 59;
+			break;
+		case 2:
+			counter.Sec = counter.Sec > 0 ? counter.Sec - 1 : 59;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_ESC) != 0) // RESET
+	{
+		devState = DevStateStandby;
+	}
+}
+void BtnActionOnTimerPause(uint32_t btnVal)
+{
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		devState = DevStateTimerRun;
+	}
+	if ((btnVal & BTN_VAL_RIGHT) != 0)
+	{
+		if (menuSelCur < 2)
+		{
+			menuSelCur++;
+		}
+		else
+		{
+			menuSelCur = 0;
+		}
+	}
+	if ((btnVal & BTN_VAL_LEFT) != 0)
+	{
+		runCounter.Hour = 0;
+		runCounter.Min = 0;
+		runCounter.Sec = 0;
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			runCounter.Hour = runCounter.Hour < 99 ? runCounter.Hour + 1 : 0;
+			break;
+		case 1:
+			runCounter.Min = runCounter.Min < 59 ? runCounter.Min + 1 : 0;
+			break;
+		case 2:
+			runCounter.Sec = runCounter.Sec < 59 ? runCounter.Sec + 1 : 0;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_DOWN) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			runCounter.Hour = runCounter.Hour > 0 ? runCounter.Hour - 1 : 99;
+			break;
+		case 1:
+			runCounter.Min = runCounter.Min > 0 ? runCounter.Min - 1 : 59;
+			break;
+		case 2:
+			runCounter.Sec = runCounter.Sec > 0 ? runCounter.Sec - 1 : 59;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_ESC) != 0) // RESET
+	{
+		devState = DevStateStandby;
+	}
+}
+void BtnActionOnTimerRun(uint32_t btnVal)
+{
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		menuSelCur = 1;
+		devState = DevStateTimerPause;
+	}
+	if ((btnVal & BTN_VAL_RIGHT) != 0)
+	{
+		if (menuSelCur < 2)
+		{
+			menuSelCur++;
+		}
+		else
+		{
+			menuSelCur = 0;
+		}
+	}
+	if ((btnVal & BTN_VAL_LEFT) != 0)
+	{
+		counter.Hour = 0;
+		counter.Min = 0;
+		counter.Sec = 0;
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			counter.Hour = counter.Hour < 99 ? counter.Hour + 1 : 0;
+			break;
+		case 1:
+			counter.Min = counter.Min < 59 ? counter.Min + 1 : 0;
+			break;
+		case 2:
+			counter.Sec = counter.Sec < 59 ? counter.Sec + 1 : 0;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_DOWN) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			counter.Hour = counter.Hour > 0 ? counter.Hour - 1 : 99;
+			break;
+		case 1:
+			counter.Min = counter.Min > 0 ? counter.Min - 1 : 59;
+			break;
+		case 2:
+			counter.Sec = counter.Sec > 0 ? counter.Sec - 1 : 59;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_ESC) != 0)
+	{
+		devState = DevStateStandby;
+	}
+}
+void BtnActionOnAlarm(uint32_t btnVal)
+{
+	// any key will stop it
+	PlayerStop(pPlayer);
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		devState = DevStateStandby;
+	}
+	if ((btnVal & BTN_VAL_ESC) != 0)
+	{
+		devState = DevStateTimerSet;
+	}
+}
+void BtnActionOnMenuClock(uint32_t btnVal)
+{
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		devState = DevStateStandby;
+		setRtc.DaysOfWeek = CalcDaysOfWeek(setRtc.Year, setRtc.Month, setRtc.Date);
+		RX8025T_SetTime(&setRtc);
+	}
+	if ((btnVal & BTN_VAL_RIGHT) != 0)
+	{
+		if (menuSelCur < 5)
+		{
+			menuSelCur++;
+		}
+		else
+		{
+			menuSelCur = 0;
+		}
+	}
+	if ((btnVal & BTN_VAL_LEFT) != 0)
+	{
+		if (menuSelCur > 0)
+		{
+			menuSelCur--;
+		}
+		else
+		{
+			menuSelCur = 5;
+		}
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			setRtc.Year = setRtc.Year < 99 ? setRtc.Year + 1 : 0;
+			break;
+		case 1:
+			setRtc.Month = setRtc.Month < 12 ? setRtc.Month + 1 : 1;
+			break;
+		case 2:
+			setRtc.Date = setRtc.Date < 31 ? setRtc.Date + 1 : 1;
+			break;
+		case 3:
+			setRtc.Hour = setRtc.Hour < 23 ? setRtc.Hour + 1 : 0;
+			break;
+		case 4:
+			setRtc.Min = setRtc.Min < 59 ? setRtc.Min + 1 : 0;
+			break;
+		case 5:
+			setRtc.Sec = setRtc.Sec < 59 ? setRtc.Sec + 1 : 0;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_DOWN) != 0)
+	{
+		switch (menuSelCur)
+		{
+		case 0:
+			setRtc.Year = setRtc.Year > 0 ? setRtc.Year - 1 : 99;
+			break;
+		case 1:
+			setRtc.Month = setRtc.Month > 0 ? setRtc.Month - 1 : 12;
+			break;
+		case 2:
+			setRtc.Date = setRtc.Date > 0 ? setRtc.Date - 1 : 31;
+			break;
+		case 3:
+			setRtc.Hour = setRtc.Hour > 0 ? setRtc.Hour - 1 : 23;
+			break;
+		case 4:
+			setRtc.Min = setRtc.Min > 0 ? setRtc.Min - 1 : 59;
+			break;
+		case 5:
+			setRtc.Sec = setRtc.Sec > 0 ? setRtc.Sec - 1 : 59;
+			break;
+		default:
+			break;
+		}
+	}
+	if ((btnVal & BTN_VAL_ESC) != 0)
+	{
+		devState = DevStateMenuMain;
+		menuSelCur = 0;
+	}
+}
+void BtnActionOnMenuMusic(uint32_t btnVal)
+{
+	PlayerStop(pPlayer);
+	if ((btnVal & BTN_VAL_ESC) != 0)
+	{
+		devState = DevStateMenuMain;
+		menuSelCur = 1;
+		musicVec.clear();
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+		if (menuSelCur > 0)
+		{
+			menuSelCur--;
+		}
+		else if (musicOffset > 0)
+		{
+			musicOffset--;
+		}
+		PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
+	}
+	if ((btnVal & BTN_VAL_DOWN) != 0)
+	{
+		if (menuSelCur < musicDispMax - 1)
+		{
+			menuSelCur++;
+		}
+		else if(musicOffset + menuSelCur < musicVec.size() - 1)
+		{
+			musicOffset++;
+		}
+		PlayerPlay(pPlayer, musicVec[menuSelCur + musicOffset].c_str()); // try me
+	}
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		if (menuSelCur + musicOffset < musicVec.size())
+		{
+			strcpy(musicUsing, musicVec[menuSelCur + musicOffset].c_str());
+			SaveConfigs();
+		}
+		devState = DevStateMenuMain;
+		menuSelCur = 1;
+		musicVec.clear();
+	}
+}
+void BtnActionOnMenuVolume(uint32_t btnVal)
+{
+	if ((btnVal & BTN_VAL_ESC) != 0)
+	{
+		// cancel
+		devState = DevStateMenuMain;
+		menuSelCur = 2;
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+		if (menuVolume < 100)
+		{
+			menuVolume += 10;
+		}
+		PlayerSetVolume(pPlayer, musicVolume);
+		PlayerPlay(pPlayer, testFile); // try me
+	}
+	if ((btnVal & BTN_VAL_DOWN) != 0)
+	{
+		if (menuVolume > 10)
+		{
+			if (menuVolume == 100)
+			{
+				u8g2_ClearBuffer(&u8g2);
+				u8g2_SendBuffer(&u8g2);
+			}
+			menuVolume -= 10;
+		}
+		PlayerSetVolume(pPlayer, musicVolume);
+		PlayerPlay(pPlayer, testFile); // try me
+	}
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		musicVolume = menuVolume;
+		devState = DevStateMenuMain;
+		menuSelCur = 2;
+		PlayerSetVolume(pPlayer, musicVolume);
+		SaveConfigs();
+	}
+}
+void BtnActionOnMenuVersion(uint32_t btnVal)
+{
+	devState = DevStateMenuMain;
+	menuSelCur = 3;
+}
+void BtnActionOnUsbMode(uint32_t btnVal)
+{
+	if ((btnVal & BTN_VAL_GO) != 0) // GO
+	{
+		GoDfu();
+	}
+	if ((btnVal & BTN_VAL_ESC) != 0)
+	{
+		devState = DevStateMenuMain;
+		menuSelCur = 4;
+	}
+	if ((btnVal & BTN_VAL_UP) != 0)
+	{
+
+	}
+}
+
 void OnBtnDown(uint32_t btnVal)
 {
 	switch (devState)
 	{
 	case DevStateSleep:
 	case DevStateStandby:
-	{
-		PlayerStop(pPlayer);
-		if ((btnVal & BTN_VAL_ESC) != 0)
-		{
-			menuSelCur = 0;
-			devState = DevStateMenuMain;
-		}
-		else
-		{
-			devState = DevStateTimerSet;
-			menuSelCur = 1;	//timer default point to the min
-		}
-	}
+		BtnActionOnStandby(btnVal);
 	break;
 	case DevStateMenuMain:
-	{
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				devState = DevStateMenuClock;
-				setRtc = rtc;
-				break;
-			case 1:
-			{
-				devState = DevStateMenuMusic;
-				LoadMp3File();
-				menuSelCur = 0;
-				musicOffset = 0;
-				string usingStr = string(musicUsing);
-				uint8_t index = 0;
-				for (auto music : musicVec)
-				{
-					if (music == usingStr)
-					{
-						if (index >= musicDispMax)
-						{
-							menuSelCur = musicDispMax - 1;		//stick at the last pos
-							musicOffset = index - musicDispMax + 1;
-						}
-						else
-						{
-							menuSelCur = index;
-						}
-						break;
-					}
-					index++;
-				}
-				PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
-			}
-				break;
-			case 2:
-				devState = DevStateMenuVolume;
-				menuVolume = musicVolume;
-				break;
-			case 3:
-				devState = DevStateMenuVersion;
-				break;
-			case 4:
-				devState = DevStateUsbMode;
-				break;
-			default:
-				devState = DevStateStandby;
-				break;
-			}
-			// menuSelCur = 0;
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			if (menuSelCur > 0)
-			{
-				menuSelCur--;
-			}
-			else
-			{
-				menuSelCur = MAIN_MENU_SIZE - 1;
-			}
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			if (menuSelCur < MAIN_MENU_SIZE - 1)
-			{
-				menuSelCur++;
-			}
-			else
-			{
-				menuSelCur = 0;
-			}
-		}
-		if ((btnVal & BTN_VAL_ESC) != 0) // ESC
-		{
-			devState = DevStateStandby;
-		}
-	}
+		BtnActionOnMenuMain(btnVal);
 	break;
 	case DevStateTimerSet:
-	{
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			if (counter.Hour == 0 && counter.Min == 0 && counter.Sec == 0)
-			{
-				// not valid time
-				devState = DevStateStandby;
-			}
-			else
-			{
-				devState = DevStateTimerRun;
-				runCounter = counter;
-			}
-		}
-		if ((btnVal & BTN_VAL_RIGHT) != 0)
-		{
-			if (menuSelCur < 2)
-			{
-				menuSelCur++;
-			}
-			else
-			{
-				menuSelCur = 0;
-			}
-		}
-		if ((btnVal & BTN_VAL_LEFT) != 0)
-		{
-			counter.Hour = 0;
-			counter.Min = 0;
-			counter.Sec = 0;
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				counter.Hour = counter.Hour < 99 ? counter.Hour + 1 : 0;
-				break;
-			case 1:
-				counter.Min = counter.Min < 59 ? counter.Min + 1 : 0;
-				break;
-			case 2:
-				counter.Sec = counter.Sec < 59 ? counter.Sec + 1 : 0;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				counter.Hour = counter.Hour > 0 ? counter.Hour - 1 : 99;
-				break;
-			case 1:
-				counter.Min = counter.Min > 0 ? counter.Min - 1 : 59;
-				break;
-			case 2:
-				counter.Sec = counter.Sec > 0 ? counter.Sec - 1 : 59;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_ESC) != 0) // RESET
-		{
-			devState = DevStateStandby;
-			//counter.Hour = 0;
-			//counter.Min = 0;
-			//counter.Sec = 0;
-		}
-	}
+		BtnActionOnTimerSet(btnVal);
 	break;
 	case DevStateTimerPause:
-	{
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			devState = DevStateTimerRun;
-		}
-		if ((btnVal & BTN_VAL_RIGHT) != 0)
-		{
-			if (menuSelCur < 2)
-			{
-				menuSelCur++;
-			}
-			else
-			{
-				menuSelCur = 0;
-			}
-		}
-		if ((btnVal & BTN_VAL_LEFT) != 0)
-		{
-			runCounter.Hour = 0;
-			runCounter.Min = 0;
-			runCounter.Sec = 0;
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				runCounter.Hour = runCounter.Hour < 99 ? runCounter.Hour + 1 : 0;
-				break;
-			case 1:
-				runCounter.Min = runCounter.Min < 59 ? runCounter.Min + 1 : 0;
-				break;
-			case 2:
-				runCounter.Sec = runCounter.Sec < 59 ? runCounter.Sec + 1 : 0;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				runCounter.Hour = runCounter.Hour > 0 ? runCounter.Hour - 1 : 99;
-				break;
-			case 1:
-				runCounter.Min = runCounter.Min > 0 ? runCounter.Min - 1 : 59;
-				break;
-			case 2:
-				runCounter.Sec = runCounter.Sec > 0 ? runCounter.Sec - 1 : 59;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_ESC) != 0) // RESET
-		{
-			devState = DevStateStandby;
-		}
-	}
+		BtnActionOnTimerPause(btnVal);
 	break;
 	case DevStateTimerRun:
-	{
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			menuSelCur = 1;
-			devState = DevStateTimerPause;
-		}
-		if ((btnVal & BTN_VAL_RIGHT) != 0)
-		{
-			if (menuSelCur < 2)
-			{
-				menuSelCur++;
-			}
-			else
-			{
-				menuSelCur = 0;
-			}
-		}
-		if ((btnVal & BTN_VAL_LEFT) != 0)
-		{
-			counter.Hour = 0;
-			counter.Min = 0;
-			counter.Sec = 0;
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				counter.Hour = counter.Hour < 99 ? counter.Hour + 1 : 0;
-				break;
-			case 1:
-				counter.Min = counter.Min < 59 ? counter.Min + 1 : 0;
-				break;
-			case 2:
-				counter.Sec = counter.Sec < 59 ? counter.Sec + 1 : 0;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				counter.Hour = counter.Hour > 0 ? counter.Hour - 1 : 99;
-				break;
-			case 1:
-				counter.Min = counter.Min > 0 ? counter.Min - 1 : 59;
-				break;
-			case 2:
-				counter.Sec = counter.Sec > 0 ? counter.Sec - 1 : 59;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_ESC) != 0)
-		{
-			devState = DevStateStandby;
-		}
-	}
+		BtnActionOnTimerRun(btnVal);
 	break;
 	case DevStateAlarm:
-	{
-		// any key will stop it
-		PlayerStop(pPlayer);
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			devState = DevStateStandby;
-		}
-		if ((btnVal & BTN_VAL_ESC) != 0)
-		{
-			devState = DevStateTimerSet;
-		}
-	}
+		BtnActionOnAlarm(btnVal);
 	break;
 	case DevStateMenuClock:
-	{
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			devState = DevStateStandby;
-			setRtc.DaysOfWeek = CalcDaysOfWeek(setRtc.Year, setRtc.Month, setRtc.Date);
-			RX8025T_SetTime(&setRtc);
-		}
-		if ((btnVal & BTN_VAL_RIGHT) != 0)
-		{
-			if (menuSelCur < 5)
-			{
-				menuSelCur++;
-			}
-			else
-			{
-				menuSelCur = 0;
-			}
-		}
-		if ((btnVal & BTN_VAL_LEFT) != 0)
-		{
-			if (menuSelCur > 0)
-			{
-				menuSelCur--;
-			}
-			else
-			{
-				menuSelCur = 5;
-			}
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				setRtc.Year = setRtc.Year < 99 ? setRtc.Year + 1 : 0;
-				break;
-			case 1:
-				setRtc.Month = setRtc.Month < 12 ? setRtc.Month + 1 : 1;
-				break;
-			case 2:
-				setRtc.Date = setRtc.Date < 31 ? setRtc.Date + 1 : 1;
-				break;
-			case 3:
-				setRtc.Hour = setRtc.Hour < 23 ? setRtc.Hour + 1 : 0;
-				break;
-			case 4:
-				setRtc.Min = setRtc.Min < 59 ? setRtc.Min + 1 : 0;
-				break;
-			case 5:
-				setRtc.Sec = setRtc.Sec < 59 ? setRtc.Sec + 1 : 0;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			switch (menuSelCur)
-			{
-			case 0:
-				setRtc.Year = setRtc.Year > 0 ? setRtc.Year - 1 : 99;
-				break;
-			case 1:
-				setRtc.Month = setRtc.Month > 0 ? setRtc.Month - 1 : 12;
-				break;
-			case 2:
-				setRtc.Date = setRtc.Date > 0 ? setRtc.Date - 1 : 31;
-				break;
-			case 3:
-				setRtc.Hour = setRtc.Hour > 0 ? setRtc.Hour - 1 : 23;
-				break;
-			case 4:
-				setRtc.Min = setRtc.Min > 0 ? setRtc.Min - 1 : 59;
-				break;
-			case 5:
-				setRtc.Sec = setRtc.Sec > 0 ? setRtc.Sec - 1 : 59;
-				break;
-			default:
-				break;
-			}
-		}
-		if ((btnVal & BTN_VAL_ESC) != 0)
-		{
-			devState = DevStateMenuMain;
-			menuSelCur = 0;
-		}
-	}
+		BtnActionOnMenuClock(btnVal);
 	break;
 	case DevStateMenuMusic:
-	{
-		PlayerStop(pPlayer);
-		if ((btnVal & BTN_VAL_ESC) != 0)
-		{
-			devState = DevStateMenuMain;
-			menuSelCur = 1;
-			musicVec.clear();
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			if (menuSelCur > 0)
-			{
-				menuSelCur--;
-			}
-			else if (musicOffset > 0)
-			{
-				musicOffset--;
-			}
-			PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			if (menuSelCur < musicDispMax - 1)
-			{
-				menuSelCur++;
-			}
-			else if(musicOffset + menuSelCur < musicVec.size() - 1)
-			{
-				musicOffset++;
-			}
-			PlayerPlay(pPlayer, musicVec[menuSelCur + musicOffset].c_str()); // try me
-		}
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			if (menuSelCur + musicOffset < musicVec.size())
-			{
-				strcpy(musicUsing, musicVec[menuSelCur + musicOffset].c_str());
-				SaveConfigs();
-			}
-			devState = DevStateMenuMain;
-			menuSelCur = 1;
-			musicVec.clear();
-		}
-	}
+		BtnActionOnMenuMusic(btnVal);
 	break;
 	case DevStateMenuVolume:
-	{
-		if ((btnVal & BTN_VAL_ESC) != 0)
-		{
-			// cancel
-			devState = DevStateMenuMain;
-			menuSelCur = 2;
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-			if (menuVolume < 100)
-			{
-				menuVolume += 10;
-			}
-			PlayerSetVolume(pPlayer, musicVolume);
-			PlayerPlay(pPlayer, testFile); // try me
-		}
-		if ((btnVal & BTN_VAL_DOWN) != 0)
-		{
-			if (menuVolume > 10)
-			{
-				if (menuVolume == 100)
-				{
-					u8g2_ClearBuffer(&u8g2);
-					u8g2_SendBuffer(&u8g2);
-				}
-				menuVolume -= 10;
-			}
-			PlayerSetVolume(pPlayer, musicVolume);
-			PlayerPlay(pPlayer, testFile); // try me
-		}
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			musicVolume = menuVolume;
-			devState = DevStateMenuMain;
-			menuSelCur = 2;
-			PlayerSetVolume(pPlayer, musicVolume);
-			SaveConfigs();
-		}
-	}
+		BtnActionOnMenuVolume(btnVal);
 	break;
 	case DevStateMenuVersion:
-	{
-		devState = DevStateMenuMain;
-		menuSelCur = 3;
-	}
+		BtnActionOnMenuVersion(btnVal);
 	break;
 	case DevStateUsbMode:
-	{
-		if ((btnVal & BTN_VAL_GO) != 0) // GO
-		{
-			GoDfu();
-		}
-		if ((btnVal & BTN_VAL_ESC) != 0)
-		{
-			devState = DevStateMenuMain;
-			menuSelCur = 4;
-		}
-		if ((btnVal & BTN_VAL_UP) != 0)
-		{
-
-		}
-	}
+		BtnActionOnUsbMode(btnVal);
 	break;
 	default:
 		devState = DevStateStandby;
@@ -1051,8 +1071,6 @@ must be initialized with valid value prior to use the f_readdir function.
 	static char buff[_MAX_LFN];
 	finfo.lfname = buff;
 	finfo.lfsize = _MAX_LFN;
-
-//dynamic refresh
 
 	musicVec.clear();
 
