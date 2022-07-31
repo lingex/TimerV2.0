@@ -24,7 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "printf.h"
-#include "player.h"
+#include "mPlayer.h"
 #include "spi_flash.h"
 #include "lcd.h"
 #include "rx8025t.h"
@@ -102,8 +102,7 @@ _RTC rtc = {
 _COUNTER runCounter = {
 	.Hour = 0, .Min = 5, .Sec = 0};
 
-
-extern uint8_t playing;
+void* pPlayer = NULL;
 
 /* USER CODE END PV */
 
@@ -216,11 +215,10 @@ int main(void)
 	}
 	printf("Init config, tick: %lu.\n", HAL_GetTick());
 	LoadConfigs();
-	PlayerVolumeAdj(musicVolume);
-	//LoadFileListing();
 
 	printf("Init player, tick: %lu.\n", HAL_GetTick());
-	PlayerInit(&hi2s2);
+	pPlayer = CreatePlayer(&hi2s2);
+	PlayerSetVolume(pPlayer, musicVolume);
 
 	printf("Init RTC, tick: %lu.\n", HAL_GetTick());
 	RX8025T_Init(&hi2c1);
@@ -315,9 +313,9 @@ int main(void)
 			}
 			if (usbDet == 1)
 			{
-				if (playing != 0)
+				if (PlayerIsBusy(pPlayer))
 				{
-					PlayerStop();
+					PlayerStop(pPlayer);
 				}
 				if (W25QXX_GetPowerState() == 0)
 				{
@@ -328,7 +326,7 @@ int main(void)
 			else
 			{
 				USB_EN(0);
-				if (W25QXX_GetPowerState() != 0 && playing == 0)
+				if (W25QXX_GetPowerState() != 0 && !PlayerIsBusy(pPlayer))
 				{
 					W25QXX_PowerDown();
 				}
@@ -369,12 +367,12 @@ int main(void)
 		lcdUpdate = 0;
 		DispUpdate();
 	}
-	if (playing != 0)
+	if (PlayerIsBusy(pPlayer))
 	{
-		PlayerUpdate();
+		PlayerTick(pPlayer);
 	}
 
-	if (playing == 0 && usbDet == 0 && devState == DevStateSleep && wkupReason == 0)
+	if (!PlayerIsBusy(pPlayer) && usbDet == 0 && devState == DevStateSleep && wkupReason == 0)
 	{
 		LCD_BACKLIGHT(BL_BRIGHTNESS_OFF);
 		if (wkupInterval != RTC_WKUP_MIN)
@@ -934,8 +932,7 @@ void TimerProcess(void)
 					devState = DevStateAlarm;
 					u8g2_ClearBuffer(&u8g2);
 					u8g2_SendBuffer(&u8g2);
-					PlayerStart(musicUsing);
-					//DispAlarm();
+					PlayerPlay(pPlayer, musicUsing);
 				}
 				else
 				{
@@ -1111,6 +1108,16 @@ void PlayerStopCallback(void)
 		}
 	}
 	wkupReason |= WKUP_REASON_POWER;
+}
+
+void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef* hi2s)
+{
+	PlayerI2sTxHalfCpltCallback(pPlayer);
+}
+
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef* hi2s)
+{
+	PlayerI2sTxCpltCallback(pPlayer);
 }
 
 /* USER CODE END 4 */

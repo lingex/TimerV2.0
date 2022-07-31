@@ -1,6 +1,6 @@
 #include "menu.h"
 #include "rx8025t.h"
-#include "player.h"
+#include "mPlayer.h"
 #include "lcd.h"
 #include <vector>
 #include <string>
@@ -21,6 +21,7 @@ extern char musicUsing[];
 extern uint8_t musicVolume;
 extern __IO uint8_t usbDet;
 extern u8g2_t u8g2;
+extern void* pPlayer;
 
 static uint8_t menuSelCur = 0;
 static uint8_t menuVolume = 0;
@@ -497,7 +498,7 @@ void OnBtnDown(uint32_t btnVal)
 	case DevStateSleep:
 	case DevStateStandby:
 	{
-		PlayerStop();
+		PlayerStop(pPlayer);
 		if ((btnVal & BTN_VAL_ESC) != 0)
 		{
 			menuSelCur = 0;
@@ -545,7 +546,7 @@ void OnBtnDown(uint32_t btnVal)
 					}
 					index++;
 				}
-				PlayerStart(musicVec[menuSelCur + musicOffset].c_str()); // try me
+				PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
 			}
 				break;
 			case 2:
@@ -797,7 +798,7 @@ void OnBtnDown(uint32_t btnVal)
 	case DevStateAlarm:
 	{
 		// any key will stop it
-		PlayerStop();
+		PlayerStop(pPlayer);
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{
 			devState = DevStateStandby;
@@ -899,7 +900,7 @@ void OnBtnDown(uint32_t btnVal)
 	break;
 	case DevStateMenuMusic:
 	{
-		PlayerStop();
+		PlayerStop(pPlayer);
 		if ((btnVal & BTN_VAL_ESC) != 0)
 		{
 			devState = DevStateMenuMain;
@@ -916,7 +917,7 @@ void OnBtnDown(uint32_t btnVal)
 			{
 				musicOffset--;
 			}
-			PlayerStart(musicVec[menuSelCur + musicOffset].c_str()); // try me
+			PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
 		}
 		if ((btnVal & BTN_VAL_DOWN) != 0)
 		{
@@ -928,7 +929,7 @@ void OnBtnDown(uint32_t btnVal)
 			{
 				musicOffset++;
 			}
-			PlayerStart(musicVec[menuSelCur + musicOffset].c_str()); // try me
+			PlayerPlay(pPlayer, musicVec[menuSelCur + musicOffset].c_str()); // try me
 		}
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{
@@ -957,8 +958,8 @@ void OnBtnDown(uint32_t btnVal)
 			{
 				menuVolume += 10;
 			}
-			PlayerVolumeAdj(menuVolume);
-			PlayerStart(testFile); // try me
+			PlayerSetVolume(pPlayer, musicVolume);
+			PlayerPlay(pPlayer, testFile); // try me
 		}
 		if ((btnVal & BTN_VAL_DOWN) != 0)
 		{
@@ -971,15 +972,15 @@ void OnBtnDown(uint32_t btnVal)
 				}
 				menuVolume -= 10;
 			}
-			PlayerVolumeAdj(menuVolume);
-			PlayerStart(testFile); // try me
+			PlayerSetVolume(pPlayer, musicVolume);
+			PlayerPlay(pPlayer, testFile); // try me
 		}
 		if ((btnVal & BTN_VAL_GO) != 0) // GO
 		{
 			musicVolume = menuVolume;
 			devState = DevStateMenuMain;
 			menuSelCur = 2;
-			PlayerVolumeAdj(musicVolume);
+			PlayerSetVolume(pPlayer, musicVolume);
 			SaveConfigs();
 		}
 	}

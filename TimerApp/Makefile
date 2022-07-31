@@ -46,7 +46,6 @@ Core/Src/config.c \
 Core/Src/lcd.c \
 Core/Src/cJSON.c \
 Core/Src/rx8025t.c \
-Core/Src/player.c \
 Core/Src/printf.c \
 Core/Src/spi_flash.c \
 Core/Src/stm32f1xx_hal_msp.c \
@@ -100,7 +99,8 @@ C_SOURCES += $(wildcard U8g2/*.c)
 #C_SOURCES += $(wildcard Core/Src/*.c)
 
 CXX_SOURCES = \
-Core/Src/menu.cpp
+Core/Src/menu.cpp \
+Core/Src/mPlayer.cpp
 
 # ASM sources
 ASM_SOURCES =  \
