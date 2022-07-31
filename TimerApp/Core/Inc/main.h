@@ -55,6 +55,10 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 int CalcDaysOfWeek(int year, int month, int date);
 void GoDfu();
+void LoadFileListing(void);
+void SaveConfigs(void);
+void PlayerStartCallback(void);
+void PlayerStopCallback(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -108,7 +112,7 @@ void GoDfu();
 #define MATH_MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
-#define MUSIC_MAX 5
+#define MUSIC_MAX 32
 #define MUSIC_FILE_NAME_LEN 32
 
 	typedef enum
@@ -145,9 +149,6 @@ void GoDfu();
 
 	extern _COUNTER runCounter;
 
-	extern char musicList[MUSIC_MAX][MUSIC_FILE_NAME_LEN];
-	extern uint8_t musicSize;
-
 
 #define BL_BRIGHTNESS_ON 1
 #define BL_BRIGHTNESS_OFF 0
@@ -166,7 +167,7 @@ void GoDfu();
 
 
 #define HARDWARE_VERSION "V2.0"
-#define FIRMWARE_VERSION "V1.3"
+#define FIRMWARE_VERSION "V2.2"
 extern const char *builtTime;
 
 #define APP_BOOTLOADER_ADDR (FLASH_BASE | 0x0000)

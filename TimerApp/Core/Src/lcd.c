@@ -1,6 +1,6 @@
 #include "lcd.h"
 
-extern SPI_HandleTypeDef hspi1;
+SPI_HandleTypeDef* pSpi = NULL;
 
 uint8_t u8x8_byte_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
@@ -13,7 +13,7 @@ uint8_t u8x8_byte_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_p
 	break;
 	case U8X8_MSG_BYTE_SEND:
 	{
-		HAL_SPI_Transmit(&hspi1, (uint8_t *)arg_ptr, arg_int, arg_int * 10);
+		HAL_SPI_Transmit(pSpi, (uint8_t *)arg_ptr, arg_int, arg_int * 10);
 	}
 	break;
 	case U8X8_MSG_BYTE_END_TRANSFER:
@@ -83,51 +83,9 @@ uint8_t u8x8_gpio_and_delay(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *ar
 	}
 	return 1;
 }
-void u8g2Init(u8g2_t *u8g2)
+void u8g2Init(u8g2_t *u8g2, SPI_HandleTypeDef* hspi)
 {
-	/*
-	u8g2_Setup_st7565_ea_dogm128_1
-	u8g2_Setup_st7565_lm6063_1
-	u8g2_Setup_st7565_64128n_1
-	u8g2_Setup_st7565_zolen_128x64_1
-	u8g2_Setup_st7565_lm6059_1
-	u8g2_Setup_st7565_ks0713_1
-	u8g2_Setup_st7565_lx12864_1
-	u8g2_Setup_st7565_erc12864_1
-	u8g2_Setup_st7565_erc12864_alt_1
-	u8g2_Setup_st7565_nhd_c12864_1
-	u8g2_Setup_st7565_jlx12864_1
-	u8g2_Setup_st7565_ea_dogm128_2
-	u8g2_Setup_st7565_lm6063_2
-	u8g2_Setup_st7565_64128n_2
-	u8g2_Setup_st7565_zolen_128x64_2
-	u8g2_Setup_st7565_lm6059_2
-	u8g2_Setup_st7565_ks0713_2
-	u8g2_Setup_st7565_lx12864_2
-	u8g2_Setup_st7565_erc12864_2
-	u8g2_Setup_st7565_erc12864_alt_2
-	u8g2_Setup_st7565_nhd_c12864_2
-	u8g2_Setup_st7565_jlx12864_2
-	u8g2_Setup_st7565_ea_dogm128_f
-	u8g2_Setup_st7565_lm6063_f
-	u8g2_Setup_st7565_64128n_f	//works!
-
-	u8g2_Setup_st7565_zolen_128x64_f
-	u8g2_Setup_st7565_lm6059_f
-	u8g2_Setup_st7565_ks0713_f
-	u8g2_Setup_st7565_lx12864_f
-	u8g2_Setup_st7565_erc12864_f
-	u8g2_Setup_st7565_erc12864_alt_f
-	u8g2_Setup_st7565_nhd_c12864_f
-	u8g2_Setup_st7565_jlx12864_f
-	u8g2_Setup_st7565_nhd_c12832_1
-	u8g2_Setup_st7565_nhd_c12832_2
-	u8g2_Setup_st7565_nhd_c12832_f
-	u8g2_Setup_st7565_ea_dogm132_1
-	u8g2_Setup_st7565_ea_dogm132_2
-	u8g2_Setup_st7565_ea_dogm132_f
-	*/
-
+	pSpi = hspi;
 	HAL_GPIO_WritePin(LCD_CS_GPIO_Port, LCD_CS_Pin, GPIO_PIN_RESET);
 
 	//U8G2_UC1701_MINI12864_F_4W_SW_SPI
