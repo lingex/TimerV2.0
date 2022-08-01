@@ -1,7 +1,8 @@
-#ifndef __MPLAYER_H__
-#define __MPLAYER_H__
+#ifndef __PLAYER_H__
+#define __PLAYER_H__
 
 
+#include <main.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -43,7 +44,6 @@ private:
 	uint16_t m_buff[BUFFER_SIZE];
 
 private:
-	//unsigned int ReadData(void* data, unsigned int size, void* token);
 	int PlayFirstFrame();
 	void PlayStream(uint16_t* pBuffer, uint32_t Size);
 	void VolumeScale(uint16_t* pBuffer, unsigned int samples);
@@ -90,4 +90,4 @@ void PlayerI2sTxCpltCallback(void *pPlayer);
 #endif
 
 
-#endif	//end of __MPLAYER_H__
+#endif	//end of __PLAYER_H__

@@ -54,23 +54,25 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 int CalcDaysOfWeek(int year, int month, int date);
-void GoDfu();
-void LoadFileListing(void);
+void GoDfu(void);
 void SaveConfigs(void);
 void PlayerStartCallback(void);
 void PlayerStopCallback(void);
+void InitProc(void);
+void SystemClock_Config(void);
+void ADC_Config(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BTN_3_Pin GPIO_PIN_13
-#define BTN_3_GPIO_Port GPIOC
-#define BTN_3_EXTI_IRQn EXTI15_10_IRQn
-#define BTN_4_Pin GPIO_PIN_14
-#define BTN_4_GPIO_Port GPIOC
-#define BTN_4_EXTI_IRQn EXTI15_10_IRQn
-#define BTN_5_Pin GPIO_PIN_15
-#define BTN_5_GPIO_Port GPIOC
-#define BTN_5_EXTI_IRQn EXTI15_10_IRQn
+#define BTN_DOWN_Pin GPIO_PIN_13
+#define BTN_DOWN_GPIO_Port GPIOC
+#define BTN_DOWN_EXTI_IRQn EXTI15_10_IRQn
+#define BTN_LEFT_Pin GPIO_PIN_14
+#define BTN_LEFT_GPIO_Port GPIOC
+#define BTN_LEFT_EXTI_IRQn EXTI15_10_IRQn
+#define BTN_ESC_Pin GPIO_PIN_15
+#define BTN_ESC_GPIO_Port GPIOC
+#define BTN_ESC_EXTI_IRQn EXTI15_10_IRQn
 #define RTC_INT_Pin GPIO_PIN_1
 #define RTC_INT_GPIO_Port GPIOC
 #define RTC_INT_EXTI_IRQn EXTI1_IRQn
@@ -93,15 +95,15 @@ void PlayerStopCallback(void);
 #define SPK_EN_GPIO_Port GPIOB
 #define USB_EN_Pin GPIO_PIN_10
 #define USB_EN_GPIO_Port GPIOA
-#define BTN_0_Pin GPIO_PIN_10
-#define BTN_0_GPIO_Port GPIOC
-#define BTN_0_EXTI_IRQn EXTI15_10_IRQn
-#define BTN_1_Pin GPIO_PIN_11
-#define BTN_1_GPIO_Port GPIOC
-#define BTN_1_EXTI_IRQn EXTI15_10_IRQn
-#define BTN_2_Pin GPIO_PIN_12
-#define BTN_2_GPIO_Port GPIOC
-#define BTN_2_EXTI_IRQn EXTI15_10_IRQn
+#define BTN_GO_Pin GPIO_PIN_10
+#define BTN_GO_GPIO_Port GPIOC
+#define BTN_GO_EXTI_IRQn EXTI15_10_IRQn
+#define BTN_UP_Pin GPIO_PIN_11
+#define BTN_UP_GPIO_Port GPIOC
+#define BTN_UP_EXTI_IRQn EXTI15_10_IRQn
+#define BTN_RIGHT_Pin GPIO_PIN_12
+#define BTN_RIGHT_GPIO_Port GPIOC
+#define BTN_RIGHT_EXTI_IRQn EXTI15_10_IRQn
 #define SPI_CS_Pin GPIO_PIN_2
 #define SPI_CS_GPIO_Port GPIOD
 /* USER CODE BEGIN Private defines */
@@ -167,7 +169,7 @@ void PlayerStopCallback(void);
 
 
 #define HARDWARE_VERSION "V2.0"
-#define FIRMWARE_VERSION "V2.2"
+#define FIRMWARE_VERSION "V2.3"
 extern const char *builtTime;
 
 #define APP_BOOTLOADER_ADDR (FLASH_BASE | 0x0000)

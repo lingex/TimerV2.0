@@ -1,6 +1,6 @@
 #include "menu.h"
 #include "rx8025t.h"
-#include "mPlayer.h"
+#include "player.h"
 #include "lcd.h"
 #include <vector>
 #include <string>
@@ -21,7 +21,7 @@ extern char musicUsing[];
 extern uint8_t musicVolume;
 extern __IO uint8_t usbDet;
 extern u8g2_t u8g2;
-extern void* pPlayer;
+extern Player player;
 
 static uint8_t menuSelCur = 0;
 static uint8_t menuVolume = 0;
@@ -107,7 +107,7 @@ const map<uint8_t, DISPACTION> dispProc = {
 	{ DevStateMenuVersion,	DispInfo },
 	{ DevStateUsbMode,		DispUsbSetings },
 };
-const vector<uint32_t> batVolStep = { 3450, 3700, 3850, 3950, 4000 };
+const vector<uint32_t> batVolStep = { 3450, 3700, 3850, 3950, 4050 };
 
 
 void DispMenuCursor(uint8_t x, uint8_t y)
@@ -493,7 +493,7 @@ void DispUsbSetings()
 
 void BtnActionOnStandby(uint32_t btnVal)
 {
-	PlayerStop(pPlayer);
+	player.Stop();
 	if ((btnVal & BTN_VAL_ESC) != 0)
 	{
 		menuSelCur = 0;
@@ -540,7 +540,7 @@ void BtnActionOnMenuMain(uint32_t btnVal)
 				}
 				index++;
 			}
-			PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
+			player.Play(musicVec[menuSelCur + musicOffset].c_str()); // try me
 		}
 			break;
 		case 2:
@@ -785,7 +785,7 @@ void BtnActionOnTimerRun(uint32_t btnVal)
 void BtnActionOnAlarm(uint32_t btnVal)
 {
 	// any key will stop it
-	PlayerStop(pPlayer);
+	player.Stop();
 	if ((btnVal & BTN_VAL_GO) != 0) // GO
 	{
 		devState = DevStateStandby;
@@ -885,7 +885,7 @@ void BtnActionOnMenuClock(uint32_t btnVal)
 }
 void BtnActionOnMenuMusic(uint32_t btnVal)
 {
-	PlayerStop(pPlayer);
+	player.Stop();
 	if ((btnVal & BTN_VAL_ESC) != 0)
 	{
 		devState = DevStateMenuMain;
@@ -902,7 +902,7 @@ void BtnActionOnMenuMusic(uint32_t btnVal)
 		{
 			musicOffset--;
 		}
-		PlayerPlay(pPlayer,musicVec[menuSelCur + musicOffset].c_str()); // try me
+		player.Play(musicVec[menuSelCur + musicOffset].c_str()); // try me
 	}
 	if ((btnVal & BTN_VAL_DOWN) != 0)
 	{
@@ -914,7 +914,7 @@ void BtnActionOnMenuMusic(uint32_t btnVal)
 		{
 			musicOffset++;
 		}
-		PlayerPlay(pPlayer, musicVec[menuSelCur + musicOffset].c_str()); // try me
+		player.Play(musicVec[menuSelCur + musicOffset].c_str()); // try me
 	}
 	if ((btnVal & BTN_VAL_GO) != 0) // GO
 	{
@@ -942,8 +942,8 @@ void BtnActionOnMenuVolume(uint32_t btnVal)
 		{
 			menuVolume += 10;
 		}
-		PlayerSetVolume(pPlayer, musicVolume);
-		PlayerPlay(pPlayer, testFile); // try me
+		player.SetVolume(menuVolume);
+		player.Play(testFile); // try me
 	}
 	if ((btnVal & BTN_VAL_DOWN) != 0)
 	{
@@ -956,20 +956,26 @@ void BtnActionOnMenuVolume(uint32_t btnVal)
 			}
 			menuVolume -= 10;
 		}
-		PlayerSetVolume(pPlayer, musicVolume);
-		PlayerPlay(pPlayer, testFile); // try me
+		player.SetVolume(menuVolume);
+		player.Play(testFile); // try me
 	}
 	if ((btnVal & BTN_VAL_GO) != 0) // GO
 	{
 		musicVolume = menuVolume;
 		devState = DevStateMenuMain;
 		menuSelCur = 2;
-		PlayerSetVolume(pPlayer, musicVolume);
+		player.Stop();
+		player.SetVolume(musicVolume);
 		SaveConfigs();
 	}
 }
 void BtnActionOnMenuVersion(uint32_t btnVal)
 {
+	if ((btnVal & BTN_VAL_UP) != 0 || (btnVal & BTN_VAL_DOWN) != 0)
+	{
+		//wake up backlight only
+		return;
+	}
 	devState = DevStateMenuMain;
 	menuSelCur = 3;
 }

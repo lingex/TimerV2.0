@@ -1,4 +1,4 @@
-#include "mPlayer.h"
+#include "player.h"
 #include "ff.h"
 #include "printf.h"
 #include "spi_flash.h"
@@ -172,15 +172,13 @@ void Player::Tick()
 #ifdef DEBUG
 		//printf("Read:%lu.\n\r", HAL_GetTick() - start);
 		uint32_t endT = HAL_GetTick();
-		sprintf(tmpBuf, "Re:%lu, tick:%lu.\n\r", endT - start, endT);
-		HAL_UART_Transmit_DMA(&huart2, (uint8_t*)tmpBuf, strlen(tmpBuf));
-		//start = HAL_GetTick();
+		printf(tmpBuf, "Re:%lu, tick:%lu.\n\r", endT - start, endT);
+		start = HAL_GetTick();
 #endif
 		VolumeScale(&m_buff[0], samples);
 
 #ifdef DEBUG
-		//sprintf(tmpBuf, "Ve:%lu.\n\r", HAL_GetTick() - start);
-		//HAL_UART_Transmit_DMA(&hlpuart1, (uint8_t*)tmpBuf, strlen(tmpBuf));
+		printf(tmpBuf, "Ve:%lu.\n\r", HAL_GetTick() - start);
 #endif
 	}
 		break;
