@@ -27,7 +27,7 @@
 			}
 		},
 		{
-			"label": "Debug",
+			"label": "Build",
 			"type": "shell",
 			"command": [
 				"make"
@@ -35,7 +35,7 @@
 			"args": [
 				"-j",
 				"debug=1",
-				"dfu=1"
+				"dfu=0"
 			],
 			"group": {
 				"kind": "build",
@@ -54,8 +54,13 @@
 			"args": [
 				"-j",
 				"debug=1",
-				"dfu=1"
-			]
+				"dfu=0"
+			],
+			"options": {
+				"statusbar": {
+					"hide": true
+				}
+			}
 		},
 		{
 			"label": "Release",
@@ -65,7 +70,7 @@
 			],
 			"args": [
 				"-j",
-				"dfu=1"
+				"dfu=0"
 			],
 			"dependsOn": [
 				""
@@ -83,7 +88,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "ST-Flash",
+			"label": "ST-Download",
 			"type": "shell",
 			"command": [
 				"make"
@@ -108,14 +113,14 @@
 		},
 		{
 			//to make this work you'll need a hex2dfu tool like this: https://github.com/nanoframework/hex2dfu
-			"label": "Build with DFU",
+			"label": "Build DFU",
 			"type": "shell",
 			"command": [
 				"make"
 			],
 			"args": [
 				"-j",
-				"debug=1",
+				"debug=0",
 				"dfu=1"
 			],
 			"problemMatcher": []
