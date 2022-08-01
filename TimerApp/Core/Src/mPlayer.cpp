@@ -60,7 +60,7 @@ int Player::PlayFirstFrame()
 		return rc;
 	}
 	m_busy = true;
-	HAL_GPIO_WritePin(SPK_EN_GPIO_Port, SPK_EN_Pin, GPIO_PIN_SET);
+	SPEAKER_ON;
 
 	VolumeScale(m_buff, samples);
 	printf("Playing sample rate: %dHz, bitrate:%dkbps \r\n", mp3Info.nSampleRateHz, mp3Info.nBitrateKbps);
@@ -118,7 +118,7 @@ void Player::Stop()
 	
 	m_busy = false;
 	HAL_I2S_DMAStop(m_pI2s);
-	HAL_GPIO_WritePin(SPK_EN_GPIO_Port, SPK_EN_Pin, GPIO_PIN_RESET);
+	SPEAKER_OFF;
 	f_close(&m_file);
 }
 
