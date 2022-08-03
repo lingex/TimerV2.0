@@ -23,3 +23,9 @@
 更多信息可以查看:  
 TimerV2.0/TimerApp/Middlewares/ST/STM32_Audio/Codecs/SpiritDSP_MP3_Dec/Release_Notes.html  
 TimerV2.0/TimerApp/Middlewares/ST/STM32_Audio/Codecs/SpiritDSP_MP3_Dec/doc/SpiritMP3Dec_UG.pdf  
+
+关于 '.dfu' 格式文件:  
+ST DFU 设备支持使用 DfuSe 或者 STM32CubeProgrammer 进行烧录  
+STM32CubeProgrammer 支持 '.bin' 和 '.hex' 格式.  
+DfuSe 仅支持 '.dfu' 格式, 所以你需要把 '.bin' 或者 '.hex' 格式的文件转换为 '.dfu'.  
+生成 '.dfu' 文件的有多种方法: 如 DfuFileMgr.exe (ST 提供), 或者一些第三方工具如 hex2dfu.exe.  

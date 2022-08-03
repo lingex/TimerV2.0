@@ -23,3 +23,9 @@ This mp3 decode solution is a limited demo, don't use for any business applicati
 More info can be found here:  
 TimerV2.0/TimerApp/Middlewares/ST/STM32_Audio/Codecs/SpiritDSP_MP3_Dec/Release_Notes.html  
 TimerV2.0/TimerApp/Middlewares/ST/STM32_Audio/Codecs/SpiritDSP_MP3_Dec/doc/SpiritMP3Dec_UG.pdf  
+
+About the '.dfu' file:  
+ST DFU device can be flash by DfuSe or STM32CubeProgrammer  
+The STM32CubeProgrammer supports both '.bin' and '.hex' file.  
+DfuSe supports '.dfu' file only, so you have to convert the '.bin' or '.hex' file into a '.dfu'.  
+To generate a '.dfu' file, there are some ways: like DfuFileMgr.exe(provide by ST), and some third-part tools like hex2dfu.exe.  
