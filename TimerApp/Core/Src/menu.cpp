@@ -185,10 +185,15 @@ void DispCommonItems()
 	u8g2_DrawLine(&u8g2, 0, 11, 127, 11);
 
 	// battery
+#if 1
 	u8g2_SetFont(&u8g2, u8g2_font_battery19_tn);
 	u8g2_SetFontDirection(&u8g2, 1);
 	u8g2_DrawGlyph(&u8g2, 108, 1, 0x0030 + GetBatteryIndex(batVoltage));
 	u8g2_SetFontDirection(&u8g2, 0);
+#else 
+	sprintf(tmpstr, "%lu", batVoltage);
+	u8g2_DrawStr(&u8g2, 100, 10, tmpstr);
+#endif
 }
 
 void DispSleep()

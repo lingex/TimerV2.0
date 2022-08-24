@@ -468,7 +468,7 @@ void Sleep(void)
 		HAL_DBGMCU_DisableDBGStandbyMode();
 	}
 
-	if (usbDet == 0 && batVoltage < 3450) // about 3.45V
+	if (0 && usbDet == 0 && batVoltage < 3450) // about 3.45V
 	{
 		printf("Low battery, adc:%lu, tick:%lu.\n", batVoltage, HAL_GetTick());
 

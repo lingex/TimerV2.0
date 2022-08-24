@@ -9,8 +9,6 @@
 #ifdef __cplusplus
 
 #include <string>
-
-#include "main.h"
 #include "spiritMP3Dec.h"
 
 using namespace std;
