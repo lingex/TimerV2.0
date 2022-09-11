@@ -31,6 +31,7 @@ __IO uint32_t btnVal = 0;
 __IO uint8_t usbDet = 0;
 uint32_t batVoltage = 0;
 uint8_t musicVolume = 95;
+uint8_t sleepDispEn = 0;
 DevState_t devState = DevStateStandby;
 __IO uint32_t wkupReason = WKUP_REASON_POWER;
 RTC_WKUP_INTERVAL_t wkupInterval = RTC_WKUP_SEC;
@@ -267,16 +268,19 @@ int main(void)
 	{
 		LCD_BACKLIGHT(BL_BRIGHTNESS_OFF);
 
-#if DISPLAY_OFF_WHILE_SLEEP
-		wkupInterval = RTC_WKUP_DISABLE;
-		RX8025T_SetINTDisable();
-#else
-		if (wkupInterval != RTC_WKUP_MIN)
+		if (sleepDispEn == 0)
 		{
-			wkupInterval = RTC_WKUP_MIN;
-			RX8025T_SetINTPerMin();
+			wkupInterval = RTC_WKUP_DISABLE;
+			RX8025T_SetINTDisable();
 		}
-#endif
+		else
+		{
+			if (wkupInterval != RTC_WKUP_MIN)
+			{
+				wkupInterval = RTC_WKUP_MIN;
+				RX8025T_SetINTPerMin();
+			}
+		}
 		if (W25QXX_GetPowerState() != 0)
 		{
 			W25QXX_PowerDown();

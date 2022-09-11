@@ -17,6 +17,7 @@ extern _RTC rtc;
 extern char tmpstr[];
 extern char musicUsing[];
 extern uint8_t musicVolume;
+extern uint8_t sleepDispEn;
 extern __IO uint8_t usbDet;
 extern u8g2_t u8g2;
 extern Player player;
@@ -80,9 +81,7 @@ static const char *mainMenuItems[] =
 		"5.USB Mode", // Disk mode
 };
 
-#if DISPLAY_OFF_WHILE_SLEEP
 static uint8_t lcdPower = 1;
-#endif
 
 static uint8_t csPosVec[] = {13, 32, 50, 74, 92, 109};	//clock setting cursor
 static uint8_t tsPosVec[] = {20, 60, 100};	//timer setting cursor
@@ -196,14 +195,12 @@ void DispCommonItems()
 
 void DispSleep()
 {
-#if DISPLAY_OFF_WHILE_SLEEP
-	if (usbDet == 0)
+	if (usbDet == 0 && sleepDispEn == 0)
 	{
 		u8g2_SetPowerSave(&u8g2, 1);
 		lcdPower = 0;
 		return;
 	}
-#endif
 /*
   11:30  Zzz 4.17V
   ----------------
@@ -1048,14 +1045,12 @@ void OnBtnDown(uint32_t btnVal)
 
 void DispUpdate(void)
 {
-#if DISPLAY_OFF_WHILE_SLEEP
-	if (devState != DevStateSleep && lcdPower == 0)
+	if (devState != DevStateSleep && lcdPower == 0 && sleepDispEn == 0)
 	{
 		lcdPower = 1;
 		u8g2_SetPowerSave(&u8g2, 0);
 		return;
 	}
-#endif
 
 	u8g2_ClearBuffer(&u8g2);
 

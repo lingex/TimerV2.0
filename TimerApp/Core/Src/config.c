@@ -8,6 +8,7 @@
 
 static char dataBuff[CONFIG_BUFF_SIZE];
 
+extern uint8_t sleepDispEn;
 extern uint8_t musicVolume;
 extern char musicUsing[];
 const char *defaultMusic = "test.mp3";
@@ -58,6 +59,11 @@ void LoadConfigs(void)
 					//musicUsing = defaultMusic;
 				}
 			}
+			const cJSON *pDispEn = cJSON_GetObjectItem(json, "sleepDisp");
+			if (pDispEn != NULL && cJSON_IsString(pDispEn))
+			{
+				sleepDispEn = strcmp(pDispEn->valuestring, "on") == 0 ? 1 : 0;
+			}
 		}
 		cJSON_Delete(json);
 	}
@@ -78,6 +84,7 @@ void SaveConfigs(void)
 			cJSON *pMusic = NULL;
 			cJSON *pVol = NULL;
 			cJSON *pDef = NULL;
+			cJSON *pDispEn = NULL;
 
 			pMusic = cJSON_CreateString(musicUsing);
 			if (pMusic != NULL)
@@ -103,6 +110,12 @@ void SaveConfigs(void)
 			{
 				cJSON_AddItemToObject(json, "default", pDef);
 			}
+			pDispEn = cJSON_CreateString(sleepDispEn == 1 ? "on" : "off");
+			if (pDispEn != NULL)
+			{
+				cJSON_AddItemToObject(json, "sleepDisp", pDispEn);
+			}
+
 			char* out = cJSON_Print(json);
 			f_printf(&cjfil, "%s", out);
 			//f_puts(out, &cjfil);
