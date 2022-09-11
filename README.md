@@ -16,6 +16,7 @@ A kittchen timer, mp3 player. STM32F103RET6, W25Q128, RX8025T, NS4168.
 ~~*USB disconnect interrupt can't be detected while device in sleep mode, may fix later.~~  
 ~~*sometimes return to main UI from the setting menu without expected, may fix later.~~  
 I2S stream CLK has to be set as a half of the real sample rate.  
+The NS4168 may cost about 2 mA current, not 1 uA provided by the datasheet.  
 
 
 # Note  
