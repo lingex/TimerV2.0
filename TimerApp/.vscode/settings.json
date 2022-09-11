@@ -10,6 +10,9 @@
 		"menu.h": "c",
 		"time.h": "c",
 		"typeinfo": "c",
-		"config.h": "c"
+		"config.h": "c",
+		"vector": "cpp",
+		"printf.h": "c",
+		"cjson.h": "c"
 	}
 }

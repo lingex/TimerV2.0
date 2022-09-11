@@ -3,16 +3,14 @@
 #include "player.h"
 #include "lcd.h"
 #include <vector>
+#include <map>
 #include <string>
 #include "printf.h"
 #include "ff.h"
-#include <string.h>
-#include <map>
 #include "spi_flash.h"
 
 using namespace std;
 
-#define DISPLAY_OFF_WHILE_SLEEP 0
 
 extern uint32_t batVoltage;
 extern _RTC rtc;

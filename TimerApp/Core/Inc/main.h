@@ -138,7 +138,8 @@ void ADC_Config(void);
 
 	typedef enum
 	{
-		RTC_WKUP_SEC = 0,
+		RTC_WKUP_DISABLE = 0,
+		RTC_WKUP_SEC,
 		RTC_WKUP_MIN,
 	} RTC_WKUP_INTERVAL_t;
 
@@ -154,6 +155,7 @@ void ADC_Config(void);
 
 #define BL_BRIGHTNESS_ON 1
 #define BL_BRIGHTNESS_OFF 0
+#define DISPLAY_OFF_WHILE_SLEEP 1
 
 #define BTN_VAL_GO 		0x0001
 #define BTN_VAL_ESC 	0x0002
@@ -169,7 +171,7 @@ void ADC_Config(void);
 
 
 #define HARDWARE_VERSION "V2.0"
-#define FIRMWARE_VERSION "V2.3"
+#define FIRMWARE_VERSION "V2.4"
 extern const char *builtTime;
 
 #define APP_BOOTLOADER_ADDR (FLASH_BASE | 0x0000)

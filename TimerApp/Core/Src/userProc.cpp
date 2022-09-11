@@ -1,17 +1,14 @@
 #include "main.h"
 #include "fatfs.h"
 #include "usb_device.h"
-
-#include "printf.h"
 #include "player.h"
 #include "spi_flash.h"
 #include "lcd.h"
 #include "rx8025t.h"
 #include "menu.h"
-#include <time.h>
-#include <stdio.h>
 #include "config.h"
-
+#include <time.h>
+#include "printf.h"
 
 typedef void (*pFunction)(void);
 #define LCD_BACKLIGHT(val) (HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, val > 0 ? GPIO_PIN_RESET : GPIO_PIN_SET))
@@ -67,6 +64,11 @@ void TimestampToRTC(void);
 void PlayerStartCallback(void);
 void PlayerStopCallback(void);
 
+void _putchar(char character)
+{
+	HAL_UART_Transmit(&huart2, (uint8_t*)&character, 1, 5);
+}
+
 int main(void)
 {
 	SCB->VTOR = APP_TIMER_ADDR;
@@ -79,10 +81,10 @@ int main(void)
 	InitProc();
 	W25QXX_WAKEUP();
 
-	printf("Starting, tick: %lu.\n", HAL_GetTick());
-	printf("Hardware: %s.\n", HARDWARE_VERSION);
-	printf("Firmware: %s.\n", FIRMWARE_VERSION);
-	printf("Built: %s.\n\n", builtTime);
+	printf_("Starting, tick: %lu.\n", HAL_GetTick());
+	printf_("Hardware: %s.\n", HARDWARE_VERSION);
+	printf_("Firmware: %s.\n", FIRMWARE_VERSION);
+	printf_("Built: %s.\n\n", builtTime);
 
 	LCD_BACKLIGHT(BL_BRIGHTNESS_ON);
 	usbDet = USB_DET;
@@ -90,44 +92,44 @@ int main(void)
 	{
 		USB_EN(1);
 	}
-	printf("Init LCD, tick: %lu.\n", HAL_GetTick());
+	printf_("Init LCD, tick: %lu.\n", HAL_GetTick());
 	u8g2Init(&u8g2, &hspi1);
 	u8g2_DrawLine(&u8g2, 0, 11, 127, 11);
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
-	sprintf(tmpstr, "Timer V2.0");
+	sprintf_(tmpstr, "Timer V2.0");
 	u8g2_DrawStr(&u8g2, 28, 10, tmpstr);
 	u8g2_SendBuffer(&u8g2);
-	HAL_Delay(200);
+	HAL_Delay(500);
 
-	printf("Init FATFS, tick: %lu.\n", HAL_GetTick());
+	printf_("Init FATFS, tick: %lu.\n", HAL_GetTick());
 	FRESULT rc = f_mount(&FatFs, "", 0);
 	if (rc != FR_OK)
 	{
-		printf("FATFS mount failed! tick: %lu.\n", HAL_GetTick());
+		printf_("FATFS mount failed! tick: %lu.\n", HAL_GetTick());
 		//return rc;
 	}
-	printf("Init config, tick: %lu.\n", HAL_GetTick());
+	printf_("Init config, tick: %lu.\n", HAL_GetTick());
 	LoadConfigs();
 
-	printf("Init player, tick: %lu.\n", HAL_GetTick());
+	printf_("Init player, tick: %lu.\n", HAL_GetTick());
 
 	player.SetVolume(musicVolume);
 
-	printf("Init RTC, tick: %lu.\n", HAL_GetTick());
+	printf_("Init RTC, tick: %lu.\n", HAL_GetTick());
 	RX8025T_Init(&hi2c1);
 	RX8025T_SetINTPerSec();
 	// RX8025T_SetINTPerMin();
 	//RX8025T_SetTime(&rtc);
 	RtcToTimestamp();
-	printf("Timestamp: %lu, tick: %lu.\n", currTime, HAL_GetTick());
+	printf_("Timestamp: %lu, tick: %lu.\n", currTime, HAL_GetTick());
 
 	lcdBLTimeout = currTime + BL_TIMEOUT;
 	sleepTimeout = currTime + SLEEP_TIMEOUT;
 
 	BatteryVoltage();
-	printf("Battery voltage: %lu mV, tick: %lu.\n\n", batVoltage, HAL_GetTick());
+	printf_("Battery voltage: %lu mV, tick: %lu.\n\n", batVoltage, HAL_GetTick());
 
-	printf("Loop start, tick: %lu.\n\n", HAL_GetTick());
+	printf_("Loop start, tick: %lu.\n\n", HAL_GetTick());
 	//DispUpdate();
 
 	//PlayerStart("test.MP3");
@@ -140,7 +142,7 @@ int main(void)
   {
 	if (wkupReason != 0)
 	{
-		//printf("wkup:%#06x\n", wkupReason);
+		//printf_("wkup:%#06x\n", wkupReason);
 
 		if ((wkupReason & WKUP_REASON_RTC) != 0)
 		{
@@ -264,31 +266,32 @@ int main(void)
 	if (!player.IsBusy() && usbDet == 0 && devState == DevStateSleep && wkupReason == 0)
 	{
 		LCD_BACKLIGHT(BL_BRIGHTNESS_OFF);
+
+#if DISPLAY_OFF_WHILE_SLEEP
+		wkupInterval = RTC_WKUP_DISABLE;
+		RX8025T_SetINTDisable();
+#else
 		if (wkupInterval != RTC_WKUP_MIN)
 		{
 			wkupInterval = RTC_WKUP_MIN;
 			RX8025T_SetINTPerMin();
 		}
+#endif
 		if (W25QXX_GetPowerState() != 0)
 		{
 			W25QXX_PowerDown();
 		}
 
-		//printf("Sleep: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
+		//printf_("Sleep: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
 		Sleep();
-		//printf("Wkup: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
+		//printf_("Wkup: %02d:%02d:%02d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, HAL_GetTick());
 	}
   }
 }
 
-void _putchar(char character)
-{
-	HAL_UART_Transmit(&huart2, (uint8_t*)&character, 1, 5);
-}
-
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	//printf("c:%#06x\n", GPIO_Pin);
+	//printf_("c:%#06x\n", GPIO_Pin);
 	switch (GPIO_Pin)
 	{
 	case RTC_INT_Pin:
@@ -456,11 +459,10 @@ void GoDfu()
 
 void Sleep(void)
 {
-#if 0
+#if 1
 	//if (usbDet != 0)
 	{
-		sprintf(tmpstr, "Go to sleep:%02d:%02d:%02d, battery:%%d, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
-		HAL_UART_Transmit(&huart3, (uint8_t *)tmpstr, strlen(tmpstr), 100);
+		printf_("Go to sleep:%02d:%02d:%02d, battery:%lu, tick:%lu.\n", rtc.Hour, rtc.Min, rtc.Sec, batVoltage, HAL_GetTick());
 	}
 #endif
 	{
@@ -470,7 +472,7 @@ void Sleep(void)
 
 	if (0 && usbDet == 0 && batVoltage < 3450) // about 3.45V
 	{
-		printf("Low battery, adc:%lu, tick:%lu.\n", batVoltage, HAL_GetTick());
+		printf_("Low battery, adc:%lu, tick:%lu.\n", batVoltage, HAL_GetTick());
 
 		// low battery
 		__disable_irq();
@@ -567,6 +569,11 @@ void PlayerStopCallback(void)
 			W25QXX_PowerDown();
 		}
 	}
+	if (W25QXX_GetPowerState() == 1 && usbDet == 0)
+	{
+		W25QXX_PowerDown();
+	}
+	
 	wkupReason |= WKUP_REASON_POWER;
 }
 
