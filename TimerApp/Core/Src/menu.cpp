@@ -197,9 +197,12 @@ void DispCommonItems()
 void DispSleep()
 {
 #if DISPLAY_OFF_WHILE_SLEEP
-	u8g2_SetPowerSave(&u8g2, 1);
-	lcdPower = 0;
-	return;
+	if (usbDet == 0)
+	{
+		u8g2_SetPowerSave(&u8g2, 1);
+		lcdPower = 0;
+		return;
+	}
 #endif
 /*
   11:30  Zzz 4.17V
