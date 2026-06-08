@@ -235,11 +235,17 @@ void W25QXX_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWri
 
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-  g_RdOver = 1;
+  if (hspi == &hspi3)
+  {
+    g_RdOver = 1;
+  }
 }
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-  g_WrOver = 1;
+  if (hspi == &hspi3)
+  {
+    g_WrOver = 1;
+  }
 }
 
 // 无检验写SPI FLASH

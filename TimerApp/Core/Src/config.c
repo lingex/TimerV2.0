@@ -3,6 +3,7 @@
 #include "ff.h"
 #include "printf.h"
 #include "cJSON.h"
+#include "spi_flash.h"
 //#include "cJSON_Utils.h"
 #include <stdlib.h>
 
@@ -14,17 +15,41 @@ extern char musicUsing[];
 const char *defaultMusic = "test.mp3";
 const char* configName = "config.json";
 
-cJSON *json = NULL;
+static void CopyMusicName(const char *name)
+{
+	snprintf(musicUsing, MUSIC_FILE_NAME_LEN, "%s", name != NULL ? name : "");
+}
 
 void LoadConfigs(void)
 {
-	FIL cjfil;
+	CopyMusicName(defaultMusic);
+	if (IsUsbMscActive())
+	{
+		return;
+	}
 
+	uint8_t oPowerState = W25QXX_GetPowerState();
+	if (oPowerState == 0)
+	{
+		W25QXX_WAKEUP();
+	}
+
+	FIL cjfil;
 	int rc = f_open(&cjfil, configName, FA_READ);
 	UINT read = 0;
-	if (rc == FR_OK && f_read(&cjfil, dataBuff, CONFIG_BUFF_SIZE, &read) == FR_OK)
+	if (rc != FR_OK)
 	{
-		json = cJSON_Parse(dataBuff);
+		if (oPowerState == 0)
+		{
+			W25QXX_PowerDown();
+		}
+		return;
+	}
+
+	if (f_read(&cjfil, dataBuff, CONFIG_BUFF_SIZE - 1, &read) == FR_OK)
+	{
+		dataBuff[read] = '\0';
+		cJSON *json = cJSON_Parse(dataBuff);
 		if (json != NULL)
 		{
 			//debug
@@ -37,12 +62,21 @@ void LoadConfigs(void)
 			//}
 			if (pVolume != NULL && cJSON_IsString(pVolume))
 			{
-				musicVolume = atoi(pVolume->valuestring);
+				int vol = atoi(pVolume->valuestring);
+				if (vol < 0)
+				{
+					vol = 0;
+				}
+				else if (vol > 100)
+				{
+					vol = 100;
+				}
+				musicVolume = (uint8_t)vol;
 			}
 			const cJSON *pMusic = cJSON_GetObjectItem(json, "music");
 			if (pMusic != NULL && cJSON_IsString(pMusic))
 			{
-				strcpy(musicUsing, pMusic->valuestring);
+				CopyMusicName(pMusic->valuestring);
 				//musicUsing = pMusic->valuestring;
 			}
 			else
@@ -50,12 +84,12 @@ void LoadConfigs(void)
 				const cJSON *pDefault = cJSON_GetObjectItem(json, "default");
 				if (pDefault != NULL && cJSON_IsString(pDefault))
 				{
-					strcpy(musicUsing, pDefault->valuestring);
+					CopyMusicName(pDefault->valuestring);
 					//musicUsing = pDefault->valuestring;
 				}
 				else
 				{
-					strcpy(musicUsing, defaultMusic);
+					CopyMusicName(defaultMusic);
 					//musicUsing = defaultMusic;
 				}
 			}
@@ -68,10 +102,25 @@ void LoadConfigs(void)
 		cJSON_Delete(json);
 	}
 	f_close(&cjfil);
+	if (oPowerState == 0)
+	{
+		W25QXX_PowerDown();
+	}
 }
 
 void SaveConfigs(void)
 {
+	if (IsUsbMscActive())
+	{
+		return;
+	}
+
+	uint8_t oPowerState = W25QXX_GetPowerState();
+	if (oPowerState == 0)
+	{
+		W25QXX_WAKEUP();
+	}
+
 	FIL cjfil;
 
 	int rc = f_open(&cjfil, configName, FA_READ| FA_WRITE | FA_CREATE_ALWAYS);
@@ -98,8 +147,8 @@ void SaveConfigs(void)
 			//{
 			//	cJSON_AddItemToObject(json, "volume", pVol);
 			//}
-			char tmpStr[] = "\0\0\0\0\0\0\0";
-			sprintf(tmpStr, "%d", musicVolume);
+			char tmpStr[4] = {0};
+			snprintf(tmpStr, sizeof(tmpStr), "%d", musicVolume);
 			pVol = cJSON_CreateString(tmpStr);
 			if (pVol != NULL)
 			{
@@ -117,11 +166,18 @@ void SaveConfigs(void)
 			}
 
 			char* out = cJSON_Print(json);
-			f_printf(&cjfil, "%s", out);
+			if (out != NULL)
+			{
+				f_printf(&cjfil, "%s", out);
+				free(out);
+			}
 			//f_puts(out, &cjfil);
 			cJSON_Delete(json);
-			free(out);
 		}
 		f_close(&cjfil);
+	}
+	if (oPowerState == 0)
+	{
+		W25QXX_PowerDown();
 	}
 }

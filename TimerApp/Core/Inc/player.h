@@ -10,6 +10,7 @@
 
 #include <string>
 #include "spiritMP3Dec.h"
+#include "ff.h"
 
 using namespace std;
 
@@ -37,15 +38,17 @@ private:
 	I2S_HandleTypeDef* m_pI2s;
 	bool m_busy;
 	uint8_t m_volume;
-	PlayerState_t m_state;
+	volatile PlayerState_t m_state;
 	TSpiritMP3Decoder m_decoder;
 	uint16_t m_buff[BUFFER_SIZE];
+	FIL m_file;
 
 private:
 	int PlayFirstFrame();
 	void PlayStream(uint16_t* pBuffer, uint32_t Size);
 	void VolumeScale(uint16_t* pBuffer, unsigned int samples);
 	void SetSampleRate(uint32_t audioFreq);
+	static unsigned int ReadData(void* data, unsigned int size, void* token);
 
 public:
 	Player(I2S_HandleTypeDef* i2s);

@@ -68,6 +68,7 @@
 #define STORAGE_BLK_SIZ                  0x200
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
+#define STORAGE_MAX_XFER_SECTORS (0xFFFFU / SPI_FLASH_SECTOR_SIZE)
 
 /* USER CODE END PRIVATE_DEFINES */
 
@@ -150,6 +151,7 @@ static int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uin
 static int8_t STORAGE_GetMaxLun_FS(void);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
+static int8_t STORAGE_CheckRange(uint32_t blk_addr, uint16_t blk_len);
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -197,10 +199,7 @@ int8_t STORAGE_Init_FS(uint8_t lun)
 int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
 {
   /* USER CODE BEGIN 3 */
-//   *block_num  = STORAGE_BLK_NBR;
-//   *block_size = STORAGE_BLK_SIZ;
-  //*block_num  = SPI_FLASH_SECTOR_COUNT-1;
-  *block_num  = W25QXX_GetSectorCount() - 1;
+  *block_num  = W25QXX_GetSectorCount();
   *block_size = SPI_FLASH_SECTOR_SIZE;
   return (USBD_OK);
   /* USER CODE END 3 */
@@ -238,11 +237,18 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
 int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 6 */
-  for(; blk_len>0; blk_len--)
+  if (STORAGE_CheckRange(blk_addr, blk_len) != USBD_OK)
   {
-    W25QXX_Read(buf, blk_addr*SPI_FLASH_SECTOR_SIZE, SPI_FLASH_SECTOR_SIZE);
-    blk_addr ++;
-    buf += SPI_FLASH_SECTOR_SIZE;
+    return (USBD_FAIL);
+  }
+  while (blk_len > 0)
+  {
+    uint16_t chunk = blk_len > STORAGE_MAX_XFER_SECTORS ? STORAGE_MAX_XFER_SECTORS : blk_len;
+    uint16_t bytes = (uint16_t)(chunk * SPI_FLASH_SECTOR_SIZE);
+    W25QXX_Read(buf, blk_addr * SPI_FLASH_SECTOR_SIZE, bytes);
+    blk_addr += chunk;
+    blk_len -= chunk;
+    buf += bytes;
   }
   return (USBD_OK);
   /* USER CODE END 6 */
@@ -256,11 +262,18 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 7 */
-  for(; blk_len>0; blk_len--)
+  if (STORAGE_CheckRange(blk_addr, blk_len) != USBD_OK)
   {
-    W25QXX_Write(buf, blk_addr*SPI_FLASH_SECTOR_SIZE, SPI_FLASH_SECTOR_SIZE);
-    blk_addr ++;
-    buf += SPI_FLASH_SECTOR_SIZE;
+    return (USBD_FAIL);
+  }
+  while (blk_len > 0)
+  {
+    uint16_t chunk = blk_len > STORAGE_MAX_XFER_SECTORS ? STORAGE_MAX_XFER_SECTORS : blk_len;
+    uint16_t bytes = (uint16_t)(chunk * SPI_FLASH_SECTOR_SIZE);
+    W25QXX_Write(buf, blk_addr * SPI_FLASH_SECTOR_SIZE, bytes);
+    blk_addr += chunk;
+    blk_len -= chunk;
+    buf += bytes;
   }
   return (USBD_OK);
   /* USER CODE END 7 */
@@ -279,6 +292,23 @@ int8_t STORAGE_GetMaxLun_FS(void)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+static int8_t STORAGE_CheckRange(uint32_t blk_addr, uint16_t blk_len)
+{
+  uint32_t sector_count = W25QXX_GetSectorCount();
+  if (blk_len == 0)
+  {
+    return USBD_OK;
+  }
+  if (blk_addr >= sector_count)
+  {
+    return USBD_FAIL;
+  }
+  if (blk_len > sector_count - blk_addr)
+  {
+    return USBD_FAIL;
+  }
+  return USBD_OK;
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

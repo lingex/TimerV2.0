@@ -3,8 +3,6 @@
 #include "printf.h"
 #include "spi_flash.h"
 
-FIL m_file;
-
 Player::Player(I2S_HandleTypeDef* i2s)
 	:m_pI2s(i2s)
 	,m_busy(false)
@@ -17,10 +15,11 @@ Player::~Player()
 {
 }
 
-unsigned int ReadData(void* data, unsigned int size, void* token)
+unsigned int Player::ReadData(void* data, unsigned int size, void* token)
 {
+	Player* pPlayer = static_cast<Player*>(token);
 	unsigned int read = 0;
-	if (f_read(&m_file, data, size, &read) != FR_OK)
+	if (f_read(&pPlayer->m_file, data, size, &read) != FR_OK)
 	{
 		return 0;
 	}
@@ -48,7 +47,6 @@ void Player::SetSampleRate(uint32_t audioFreq)
 
 int Player::PlayFirstFrame()
 {
-	int rc = -1;
 	unsigned int samples = 0;
 
 	TSpiritMP3Info mp3Info;
@@ -57,7 +55,7 @@ int Player::PlayFirstFrame()
 	if (samples < 1)
 	{
 		// Error, EOF
-		return rc;
+		return -1;
 	}
 	m_busy = true;
 	SPEAKER_ON;
@@ -70,7 +68,7 @@ int Player::PlayFirstFrame()
 
 	PlayStream(m_buff, samples);
 
-	return rc;
+	return 0;
 }
 void Player::PlayStream(uint16_t* pBuffer, uint32_t Size)
 {
@@ -91,21 +89,41 @@ void Player::VolumeScale(uint16_t* pBuffer, unsigned int samples)
 
 void Player::Play(const char* fileName)
 {
+	if (IsUsbMscActive())
+	{
+		return;
+	}
 	if (m_busy)
 	{
 		Stop();
 	}
-	PlayerStartCallback();
+	bool wokeFlash = false;
+	if (W25QXX_GetPowerState() == 0)
+	{
+		W25QXX_WAKEUP();
+		wokeFlash = true;
+	}
 	int rc = f_open(&m_file, fileName, FA_READ);
 	if (rc == FR_OK)
 	{
 		/* Initialize MP3 decoder */
-#if 1	//without callback
-		SpiritMP3DecoderInit(&m_decoder, ReadData, NULL, NULL);
-#else	//with callback
-		SpiritMP3DecoderInit(&decoder, ReadData, DacProcess, NULL);
-#endif
-		PlayFirstFrame();
+		SpiritMP3DecoderInit(&m_decoder, ReadData, NULL, this);
+		if (PlayFirstFrame() == 0)
+		{
+			PlayerStartCallback();
+		}
+		else
+		{
+			f_close(&m_file);
+			if (wokeFlash)
+			{
+				W25QXX_PowerDown();
+			}
+		}
+	}
+	else if (wokeFlash)
+	{
+		W25QXX_PowerDown();
 	}
 }
 
@@ -117,6 +135,7 @@ void Player::Stop()
 	}
 	
 	m_busy = false;
+	m_state = PLAYER_STATE_IDLE;
 	HAL_I2S_DMAStop(m_pI2s);
 	SPEAKER_OFF;
 	f_close(&m_file);
@@ -170,15 +189,14 @@ void Player::Tick()
 			break;
 		}
 #ifdef DEBUG
-		//printf("Read:%lu.\n\r", HAL_GetTick() - start);
 		uint32_t endT = HAL_GetTick();
-		printf(tmpBuf, "Re:%lu, tick:%lu.\n\r", endT - start, endT);
+		printf("Re:%lu, tick:%lu.\n\r", endT - start, endT);
 		start = HAL_GetTick();
 #endif
 		VolumeScale(&m_buff[0], samples);
 
 #ifdef DEBUG
-		printf(tmpBuf, "Ve:%lu.\n\r", HAL_GetTick() - start);
+		printf("Ve:%lu.\n\r", HAL_GetTick() - start);
 #endif
 	}
 		break;

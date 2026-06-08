@@ -40,6 +40,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+#define USER_MAX_XFER_SECTORS (0xFFFFU / SPI_FLASH_SECTOR_SIZE)
 
 /* Private variables ---------------------------------------------------------*/
 /* Disk status */
@@ -128,13 +129,25 @@ DRESULT USER_read (
 )
 {
   /* USER CODE BEGIN READ */
-  for(; count>0; count--)
+  DWORD sector_count = W25QXX_GetSectorCount();
+  if (count == 0)
   {
-    W25QXX_Read((uint8_t *)buff, sector*SPI_FLASH_SECTOR_SIZE, SPI_FLASH_SECTOR_SIZE);
-    sector++;
-    buff += SPI_FLASH_SECTOR_SIZE;
+    return RES_PARERR;
   }
-    return RES_OK;
+  if ((Stat & STA_NOINIT) || sector >= sector_count || count > sector_count - sector)
+  {
+    return RES_ERROR;
+  }
+  while (count > 0)
+  {
+    UINT chunk = count > USER_MAX_XFER_SECTORS ? USER_MAX_XFER_SECTORS : count;
+    uint16_t bytes = (uint16_t)(chunk * SPI_FLASH_SECTOR_SIZE);
+    W25QXX_Read((uint8_t *)buff, sector * SPI_FLASH_SECTOR_SIZE, bytes);
+    sector += chunk;
+    count -= chunk;
+    buff += bytes;
+  }
+  return RES_OK;
   /* USER CODE END READ */
 }
 
@@ -155,14 +168,25 @@ DRESULT USER_write (
 )
 {
   /* USER CODE BEGIN WRITE */
-  /* USER CODE HERE */
-  for(; count>0; count--)
+  DWORD sector_count = W25QXX_GetSectorCount();
+  if (count == 0)
   {
-    W25QXX_Write((uint8_t *)buff, sector*SPI_FLASH_SECTOR_SIZE, SPI_FLASH_SECTOR_SIZE);
-    sector++;
-    buff += SPI_FLASH_SECTOR_SIZE;
+    return RES_PARERR;
   }
-    return RES_OK;
+  if ((Stat & STA_NOINIT) || sector >= sector_count || count > sector_count - sector)
+  {
+    return RES_ERROR;
+  }
+  while (count > 0)
+  {
+    UINT chunk = count > USER_MAX_XFER_SECTORS ? USER_MAX_XFER_SECTORS : count;
+    uint16_t bytes = (uint16_t)(chunk * SPI_FLASH_SECTOR_SIZE);
+    W25QXX_Write((uint8_t *)buff, sector * SPI_FLASH_SECTOR_SIZE, bytes);
+    sector += chunk;
+    count -= chunk;
+    buff += bytes;
+  }
+  return RES_OK;
   /* USER CODE END WRITE */
 }
 #endif /* _USE_WRITE == 1 */

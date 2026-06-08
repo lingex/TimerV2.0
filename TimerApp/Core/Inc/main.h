@@ -61,6 +61,7 @@ void PlayerStopCallback(void);
 void InitProc(void);
 void SystemClock_Config(void);
 void ADC_Config(void);
+uint8_t IsUsbMscActive(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -106,6 +107,7 @@ void ADC_Config(void);
 #define BTN_RIGHT_EXTI_IRQn EXTI15_10_IRQn
 #define SPI_CS_Pin GPIO_PIN_2
 #define SPI_CS_GPIO_Port GPIOD
+
 /* USER CODE BEGIN Private defines */
 #ifndef MATH_MIN
 #define MATH_MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -115,7 +117,8 @@ void ADC_Config(void);
 #endif
 
 #define MUSIC_MAX 32
-#define MUSIC_FILE_NAME_LEN 32
+#define APP_TMP_STR_LEN 64
+#define MUSIC_FILE_NAME_LEN 128
 
 	typedef enum
 	{

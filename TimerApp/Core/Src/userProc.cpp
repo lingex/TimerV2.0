@@ -43,8 +43,8 @@ uint8_t lcdUpdate = 0;
 
 FATFS FatFs;
 u8g2_t u8g2;
-char tmpstr[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-char musicUsing[] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+char tmpstr[APP_TMP_STR_LEN] = {0};
+char musicUsing[MUSIC_FILE_NAME_LEN] = "test.mp3";
 const char *builtTime = __DATE__ "," __TIME__;
 
 _RTC rtc = {
@@ -68,6 +68,11 @@ void PlayerStopCallback(void);
 void _putchar(char character)
 {
 	HAL_UART_Transmit(&huart2, (uint8_t*)&character, 1, 5);
+}
+
+uint8_t IsUsbMscActive(void)
+{
+	return usbDet != 0 ? 1 : 0;
 }
 
 int main(void)
@@ -97,7 +102,7 @@ int main(void)
 	u8g2Init(&u8g2, &hspi1);
 	u8g2_DrawLine(&u8g2, 0, 11, 127, 11);
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
-	sprintf_(tmpstr, "Timer V2.0");
+	snprintf_(tmpstr, APP_TMP_STR_LEN, "Timer V2.0");
 	u8g2_DrawStr(&u8g2, 28, 10, tmpstr);
 	u8g2_SendBuffer(&u8g2);
 	HAL_Delay(500);
@@ -111,6 +116,10 @@ int main(void)
 	}
 	printf_("Init config, tick: %lu.\n", HAL_GetTick());
 	LoadConfigs();
+	if (IsUsbMscActive())
+	{
+		f_mount(NULL, "", 0);
+	}
 
 	printf_("Init player, tick: %lu.\n", HAL_GetTick());
 
@@ -141,11 +150,16 @@ int main(void)
 
   while (1)
   {
-	if (wkupReason != 0)
-	{
-		//printf_("wkup:%#06x\n", wkupReason);
+	__disable_irq();
+	uint32_t reasons = wkupReason;
+	wkupReason = 0;
+	__enable_irq();
 
-		if ((wkupReason & WKUP_REASON_RTC) != 0)
+	if (reasons != 0)
+	{
+		//printf_("wkup:%#06x\n", reasons);
+
+		if ((reasons & WKUP_REASON_RTC) != 0)
 		{
 #if 0	//counter
 			currTime++;
@@ -160,9 +174,9 @@ int main(void)
 			BatteryVoltage();
 			lcdUpdate = 1;
 		}
-		if ((wkupReason & WKUP_REASON_BTN) != 0)
+		if ((reasons & WKUP_REASON_BTN) != 0)
 		{
-			if (wkupInterval != RTC_WKUP_SEC && (wkupReason & WKUP_REASON_RTC) == 0)
+			if (wkupInterval != RTC_WKUP_SEC && (reasons & WKUP_REASON_RTC) == 0)
 			{
 				RtcToTimestamp();
 			}
@@ -174,7 +188,15 @@ int main(void)
 				wkupInterval = RTC_WKUP_SEC;
 				RX8025T_SetINTPerSec();
 			}
-			OnBtnDown(btnVal);
+			__disable_irq();
+			uint32_t buttons = btnVal;
+			btnVal = 0;
+			wkupReason &= ~WKUP_REASON_BTN;
+			__enable_irq();
+			if (buttons != 0)
+			{
+				OnBtnDown(buttons);
+			}
 			if (devState == DevStateTimerRun || devState == DevStateMenuMusic)
 			{
 				menuTimeout = 0;
@@ -185,10 +207,9 @@ int main(void)
 				sleepTimeout = 0;
 				menuTimeout = currTime + MENU_TIMEOUT;
 			}
-			btnVal = 0;
 			lcdUpdate = 1;
 		}
-		if ((wkupReason & WKUP_REASON_USB) != 0)
+		if ((reasons & WKUP_REASON_USB) != 0)
 		{
 			if (devState == DevStateSleep)
 			{
@@ -213,11 +234,21 @@ int main(void)
 				{
 					W25QXX_WAKEUP();
 				}
+				f_mount(NULL, "", 0);
 				USB_EN(1);
 			}
 			else
 			{
 				USB_EN(0);
+				FRESULT mountRes = f_mount(&FatFs, "", 1);
+				if (mountRes == FR_OK)
+				{
+					LoadConfigs();
+				}
+				else
+				{
+					printf_("FATFS remount failed! rc:%d, tick: %lu.\n", mountRes, HAL_GetTick());
+				}
 				if (W25QXX_GetPowerState() != 0 && !player.IsBusy())
 				{
 					W25QXX_PowerDown();
@@ -225,11 +256,10 @@ int main(void)
 			}
 			lcdUpdate = 1;
 		}
-		if ((wkupReason & WKUP_REASON_POWER) != 0)
+		if ((reasons & WKUP_REASON_POWER) != 0)
 		{
 			lcdUpdate = 1;
 		}
-		wkupReason = 0;
 	}
 
 	if (lcdBLTimeout > 0 && currTime >= lcdBLTimeout)
@@ -349,6 +379,7 @@ void BatteryVoltage(void)
 uint32_t GetBatAdc(void)
 {
 	uint32_t temp = 0;
+	uint32_t samples = 0;
 	const uint32_t fixVal = 325;
 
 	for (uint8_t n = 0; n < 5; n++)
@@ -356,10 +387,12 @@ uint32_t GetBatAdc(void)
 		HAL_ADC_Start(&hadc1);
 		if (HAL_ADC_PollForConversion(&hadc1, 20) == HAL_OK)
 		{
-			temp += HAL_ADC_GetValue(&hadc1) - fixVal;
+			uint32_t raw = HAL_ADC_GetValue(&hadc1);
+			temp += raw > fixVal ? raw - fixVal : 0;
+			samples++;
 		}
 	}
-	return (temp / 5);
+	return samples > 0 ? (temp / samples) : 0;
 }
 
 // 21th century only
@@ -377,7 +410,7 @@ int CalcDaysOfWeek(int year, int month, int date)
 	}
 	int W = (C / 4) - 2 * C + y + (y / 4) + (13 * (M + 1) / 5) + d - 1;
 
-	return (W % 7);
+	return (W % 7 + 7) % 7;
 }
 
 void TimerProcess(void)
@@ -474,7 +507,7 @@ void Sleep(void)
 		HAL_DBGMCU_DisableDBGStandbyMode();
 	}
 
-	if (0 && usbDet == 0 && batVoltage < 3450) // about 3.45V
+	if (usbDet == 0 && batVoltage < 3450) // about 3.45V
 	{
 		printf_("Low battery, adc:%lu, tick:%lu.\n", batVoltage, HAL_GetTick());
 
@@ -519,9 +552,13 @@ void Sleep(void)
 void RtcToTimestamp(void)
 {
 	RX8025T_GetTime(&rtc);
-	struct tm t;
+	struct tm t = {0};
 	RtcToTm(&rtc, &t);
-	currTime = mktime(&t) - 8 * 3600;
+	time_t ts = mktime(&t);
+	if (ts >= 8 * 3600)
+	{
+		currTime = (uint32_t)(ts - 8 * 3600);
+	}
 }
 
 void RtcToTm(_RTC *rtc, struct tm *t)
@@ -532,17 +569,21 @@ void RtcToTm(_RTC *rtc, struct tm *t)
 	t->tm_hour = rtc->Hour;
 	t->tm_min = rtc->Min;
 	t->tm_sec = rtc->Sec;
+	t->tm_isdst = -1;
 }
 
 void TimestampToRTC(void)
 {
-	time_t rawtime = currTime;
+	time_t rawtime = currTime + 8 * 3600;
 	struct tm * timeinfo;
 
-	time (&rawtime);
 	timeinfo = localtime (&rawtime);
-	rtc.Year = timeinfo->tm_year - 2000;
-	rtc.Month = timeinfo->tm_mon;
+	if (timeinfo == NULL)
+	{
+		return;
+	}
+	rtc.Year = timeinfo->tm_year + 1900 - 2000;
+	rtc.Month = timeinfo->tm_mon + 1;
 	rtc.Date = timeinfo->tm_mday;
 	rtc.DaysOfWeek = timeinfo->tm_wday;
 	rtc.Hour = timeinfo->tm_hour;
@@ -583,10 +624,16 @@ void PlayerStopCallback(void)
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef* hi2s)
 {
-	player.TransmitHalfCpltCallback();
+	if (hi2s == &hi2s2)
+	{
+		player.TransmitHalfCpltCallback();
+	}
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef* hi2s)
 {
-	player.TransmitCpltCallback();
+	if (hi2s == &hi2s2)
+	{
+		player.TransmitCpltCallback();
+	}
 }

@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <cstring>
 #include "printf.h"
 #include "ff.h"
 #include "spi_flash.h"
@@ -107,6 +108,51 @@ const map<uint8_t, DISPACTION> dispProc = {
 const vector<uint32_t> batVolStep = { 3450, 3700, 3850, 3950, 4050 };
 
 
+static size_t SelectedMusicIndex()
+{
+	return (size_t)musicOffset + menuSelCur;
+}
+
+static bool HasSelectedMusic()
+{
+	return !musicVec.empty() && SelectedMusicIndex() < musicVec.size();
+}
+
+static void ClampMusicSelection()
+{
+	if (musicVec.empty())
+	{
+		menuSelCur = 0;
+		musicOffset = 0;
+		return;
+	}
+
+	size_t index = SelectedMusicIndex();
+	if (index >= musicVec.size())
+	{
+		index = musicVec.size() - 1;
+	}
+
+	if (index >= musicDispMax)
+	{
+		menuSelCur = musicDispMax - 1;
+		musicOffset = (uint8_t)(index - menuSelCur);
+	}
+	else
+	{
+		menuSelCur = (uint8_t)index;
+		musicOffset = 0;
+	}
+}
+
+static void PlaySelectedMusic()
+{
+	if (HasSelectedMusic())
+	{
+		player.Play(musicVec[SelectedMusicIndex()].c_str());
+	}
+}
+
 void DispMenuCursor(uint8_t x, uint8_t y)
 {
 	u8g2_SetFont(&u8g2, u8g2_font_m2icon_9_tf); //up arrow
@@ -163,12 +209,12 @@ uint8_t GetBatteryIndex(uint32_t voltage)
 
 void DispCommonItems()
 {
-	sprintf(tmpstr, "%s", menuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", menuStr[devState]);
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
 	u8g2_DrawStr(&u8g2, 50, 10, tmpstr);
 
 	// small time
-	sprintf(tmpstr, "%02d:%02d", rtc.Hour, rtc.Min);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%02d:%02d", rtc.Hour, rtc.Min);
 	u8g2_DrawStr(&u8g2, 0, 10, tmpstr);
 
 	if (usbDet == 1)
@@ -188,7 +234,7 @@ void DispCommonItems()
 	u8g2_DrawGlyph(&u8g2, 108, 1, 0x0030 + GetBatteryIndex(batVoltage));
 	u8g2_SetFontDirection(&u8g2, 0);
 #else 
-	sprintf(tmpstr, "%lu", batVoltage);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%lu", batVoltage);
 	u8g2_DrawStr(&u8g2, 100, 10, tmpstr);
 #endif
 }
@@ -211,23 +257,23 @@ void DispSleep()
   */
 	DispCommonItems();
 
-	sprintf(tmpstr, "%02d:%02d", rtc.Hour, rtc.Min);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%02d:%02d", rtc.Hour, rtc.Min);
 	u8g2_SetFont(&u8g2, u8g2_font_osb26_tr);
 	u8g2_DrawStr(&u8g2, 18, 44, tmpstr);
 
-	sprintf(tmpstr, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
 	// u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 
 #if 1	//week str
-	sprintf(tmpstr, "%s", dowStr[rtc.DaysOfWeek]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", dowStr[rtc.DaysOfWeek]);
 	u8g2_DrawStr(&u8g2, 106, 63, tmpstr);
 #else	//batval
-	sprintf(tmpstr, "%umV", batVoltage);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%umV", batVoltage);
 	u8g2_DrawStr(&u8g2, 86, 63, tmpstr);
 #endif
-	sprintf(tmpstr, (usbDet == 1) ? "ZZz" : "Zzz");
+	snprintf(tmpstr, APP_TMP_STR_LEN, (usbDet == 1) ? "ZZz" : "Zzz");
 	u8g2_DrawStr(&u8g2, 58, 10, tmpstr);
 }
 
@@ -243,15 +289,15 @@ void DispStandby()
   */
 	DispCommonItems();
 
-	sprintf(tmpstr, "%02d:%02d", rtc.Hour, rtc.Min);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%02d:%02d", rtc.Hour, rtc.Min);
 	u8g2_SetFont(&u8g2, u8g2_font_osb26_tr);
 	u8g2_DrawStr(&u8g2, 18, 44, tmpstr);
 
-	sprintf(tmpstr, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
 	u8g2_SetFont(&u8g2, u8g2_font_7x14B_tr);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 
-	sprintf(tmpstr, "%s", dowStr[rtc.DaysOfWeek]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", dowStr[rtc.DaysOfWeek]);
 	u8g2_DrawStr(&u8g2, 106, 63, tmpstr);
 }
 
@@ -267,15 +313,15 @@ void DispTimerRun()
   */
 	DispCommonItems();
 
-	sprintf(tmpstr, "%02d:%02d:%02d", runCounter.Hour, runCounter.Min, runCounter.Sec);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%02d:%02d:%02d", runCounter.Hour, runCounter.Min, runCounter.Sec);
 	u8g2_SetFont(&u8g2, u8g2_font_osb21_tr);
 	u8g2_DrawStr(&u8g2, 8, 44, tmpstr);
 
-	sprintf(tmpstr, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_DrawStr(&u8g2, 0, 0, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
@@ -293,15 +339,15 @@ void DispTimerPause()
 	uint8_t pos = tsPosVec[menuSelCur];
 	DispClockSettingsCursor(pos, 54);
 
-	sprintf(tmpstr, "%02d:%02d:%02d", runCounter.Hour, runCounter.Min, runCounter.Sec);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%02d:%02d:%02d", runCounter.Hour, runCounter.Min, runCounter.Sec);
 	u8g2_SetFont(&u8g2, u8g2_font_osb21_tr);
 	u8g2_DrawStr(&u8g2, 8, 44, tmpstr);
 
-	sprintf(tmpstr, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "20%02d-%02d-%02d", rtc.Year, rtc.Month, rtc.Date);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_DrawStr(&u8g2, 0, 0, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
@@ -320,11 +366,11 @@ void DispTimerSettings()
 	uint8_t pos = tsPosVec[menuSelCur];
 	DispClockSettingsCursor(pos, 54);
 
-	sprintf(tmpstr, "%02d:%02d:%02d", counter.Hour, counter.Min, counter.Sec);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%02d:%02d:%02d", counter.Hour, counter.Min, counter.Sec);
 	u8g2_SetFont(&u8g2, u8g2_font_osb21_tr);
 	u8g2_DrawStr(&u8g2, 8, 44, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
@@ -341,13 +387,13 @@ void DispAlarm()
   */
 	DispCommonItems();
 
-	sprintf(tmpstr, "Playing:");
+	snprintf(tmpstr, APP_TMP_STR_LEN, "Playing:");
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_DrawStr(&u8g2, 0, 24, tmpstr);
-	sprintf(tmpstr, "%s", musicUsing);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", musicUsing);
 	u8g2_DrawStr(&u8g2, 0, 44, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
@@ -366,11 +412,11 @@ void DispClockSettings()
 	uint8_t pos = csPosVec[menuSelCur];
 	DispClockSettingsCursor(pos, 35);
 
-	sprintf(tmpstr, "20%02d-%02d-%02d  %02d:%02d:%02d", setRtc.Year, setRtc.Month, setRtc.Date, setRtc.Hour, setRtc.Min, setRtc.Sec);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "20%02d-%02d-%02d  %02d:%02d:%02d", setRtc.Year, setRtc.Month, setRtc.Date, setRtc.Hour, setRtc.Min, setRtc.Sec);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_DrawStr(&u8g2, 0, 24, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
@@ -394,11 +440,11 @@ void DispMenu()
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	for (int i = 0; i < MAIN_MENU_SIZE; i++)
 	{
-		sprintf(tmpstr, "%s", mainMenuItems[i]);
+		snprintf(tmpstr, APP_TMP_STR_LEN, "%s", mainMenuItems[i]);
 		u8g2_DrawStr(&u8g2, posX, posY + i * 8, tmpstr);
 	}
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
@@ -416,19 +462,28 @@ void DispMusicSettings()
 
 	uint8_t posX = 14;
 	uint8_t posY = 22;
+	ClampMusicSelection();
 	DispMenuCursor(posX - 12, 14 + menuSelCur * 8);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-	uint8_t mSize = MATH_MIN(musicDispMax, (uint8_t)musicVec.size());
+	size_t available = musicVec.size() > musicOffset ? musicVec.size() - musicOffset : 0;
+	size_t mSize = MATH_MIN((size_t)musicDispMax, available);
 	for (size_t i = 0; i < mSize; i++)
 	{
-		sprintf(tmpstr, "%d.%s", i + musicOffset + 1, musicVec[i + musicOffset].c_str());
+		snprintf(tmpstr, APP_TMP_STR_LEN, "%u.%s", (unsigned)(i + musicOffset + 1), musicVec[i + musicOffset].c_str());
 		u8g2_DrawStr(&u8g2, posX, posY + i * 8, tmpstr);
 	}
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 
-	sprintf(tmpstr, "%d / %d", menuSelCur + musicOffset + 1, (int)musicVec.size());
+	if (musicVec.empty())
+	{
+		snprintf(tmpstr, APP_TMP_STR_LEN, "0 / 0");
+	}
+	else
+	{
+		snprintf(tmpstr, APP_TMP_STR_LEN, "%u / %u", (unsigned)(SelectedMusicIndex() + 1), (unsigned)musicVec.size());
+	}
 	u8g2_DrawStr(&u8g2, 50, 63, tmpstr);
 }
 
@@ -444,10 +499,10 @@ void DispVolumeSettings()
 	DispCommonItems();
 	u8g2_SetFont(&u8g2, u8g2_font_osb26_tr);
 
-	sprintf(tmpstr, "%d", menuVolume);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%d", menuVolume);
 	u8g2_DrawStr(&u8g2, 44, 44, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
@@ -465,20 +520,20 @@ void DispInfo()
 	DispCommonItems();
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 
-	sprintf(tmpstr, "Hw: %s", HARDWARE_VERSION);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "Hw: %s", HARDWARE_VERSION);
 	u8g2_DrawStr(&u8g2, 0, 24, tmpstr);
-	sprintf(tmpstr, "Fw: %s", FIRMWARE_VERSION);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "Fw: %s", FIRMWARE_VERSION);
 	u8g2_DrawStr(&u8g2, 68, 24, tmpstr);
 	
-	sprintf(tmpstr, "Bat: %u mV", batVoltage);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "Bat: %u mV", batVoltage);
 	u8g2_DrawStr(&u8g2, 0, 34, tmpstr);
 
-	sprintf(tmpstr, "Built:");
+	snprintf(tmpstr, APP_TMP_STR_LEN, "Built:");
 	u8g2_DrawStr(&u8g2, 0, 44, tmpstr);
-	sprintf(tmpstr, "%s", builtTime);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", builtTime);
 	u8g2_DrawStr(&u8g2, 0, 54, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
@@ -487,10 +542,10 @@ void DispUsbSetings()
 	DispCommonItems();
 	u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
 
-	sprintf(tmpstr, "Enter DFU mode");
+	snprintf(tmpstr, APP_TMP_STR_LEN, "Enter DFU mode");
 	u8g2_DrawStr(&u8g2, 20, 40, tmpstr);
 
-	sprintf(tmpstr, "%s", btnMenuStr[devState]);
+	snprintf(tmpstr, APP_TMP_STR_LEN, "%s", btnMenuStr[devState]);
 	u8g2_DrawStr(&u8g2, 0, 63, tmpstr);
 }
 
@@ -524,26 +579,30 @@ void BtnActionOnMenuMain(uint32_t btnVal)
 			LoadMp3File();
 			menuSelCur = 0;
 			musicOffset = 0;
-			string usingStr = string(musicUsing);
-			uint8_t index = 0;
-			for (auto music : musicVec)
+			if (!musicVec.empty())
 			{
-				if (music == usingStr)
+				string usingStr = string(musicUsing);
+				size_t index = 0;
+				for (const auto &music : musicVec)
 				{
-					if (index >= musicDispMax)
+					if (music == usingStr)
 					{
-						menuSelCur = musicDispMax - 1;		//stick at the last pos
-						musicOffset = index - musicDispMax + 1;
+						if (index >= musicDispMax)
+						{
+							menuSelCur = musicDispMax - 1;		//stick at the last pos
+							musicOffset = (uint8_t)(index - musicDispMax + 1);
+						}
+						else
+						{
+							menuSelCur = (uint8_t)index;
+						}
+						break;
 					}
-					else
-					{
-						menuSelCur = index;
-					}
-					break;
+					index++;
 				}
-				index++;
+				ClampMusicSelection();
+				PlaySelectedMusic(); // try me
 			}
-			player.Play(musicVec[menuSelCur + musicOffset].c_str()); // try me
 		}
 			break;
 		case 2:
@@ -895,35 +954,44 @@ void BtnActionOnMenuMusic(uint32_t btnVal)
 		menuSelCur = 1;
 		musicVec.clear();
 	}
-	if ((btnVal & BTN_VAL_UP) != 0)
+	if ((btnVal & BTN_VAL_UP) != 0 && !musicVec.empty())
 	{
-		if (menuSelCur > 0)
+		if (SelectedMusicIndex() > 0)
 		{
-			menuSelCur--;
+			if (menuSelCur > 0)
+			{
+				menuSelCur--;
+			}
+			else if (musicOffset > 0)
+			{
+				musicOffset--;
+			}
 		}
-		else if (musicOffset > 0)
-		{
-			musicOffset--;
-		}
-		player.Play(musicVec[menuSelCur + musicOffset].c_str()); // try me
+		ClampMusicSelection();
+		PlaySelectedMusic(); // try me
 	}
-	if ((btnVal & BTN_VAL_DOWN) != 0)
+	if ((btnVal & BTN_VAL_DOWN) != 0 && !musicVec.empty())
 	{
-		if (menuSelCur < musicDispMax - 1)
+		if (SelectedMusicIndex() + 1 < musicVec.size())
 		{
-			menuSelCur++;
+			if (menuSelCur + 1 < musicDispMax)
+			{
+				menuSelCur++;
+			}
+			else
+			{
+				musicOffset++;
+			}
 		}
-		else if(musicOffset + menuSelCur < musicVec.size() - 1)
-		{
-			musicOffset++;
-		}
-		player.Play(musicVec[menuSelCur + musicOffset].c_str()); // try me
+		ClampMusicSelection();
+		PlaySelectedMusic(); // try me
 	}
 	if ((btnVal & BTN_VAL_GO) != 0) // GO
 	{
-		if (menuSelCur + musicOffset < musicVec.size())
+		ClampMusicSelection();
+		if (HasSelectedMusic())
 		{
-			strcpy(musicUsing, musicVec[menuSelCur + musicOffset].c_str());
+			snprintf(musicUsing, MUSIC_FILE_NAME_LEN, "%s", musicVec[SelectedMusicIndex()].c_str());
 			SaveConfigs();
 		}
 		devState = DevStateMenuMain;
@@ -1049,7 +1117,6 @@ void DispUpdate(void)
 	{
 		lcdPower = 1;
 		u8g2_SetPowerSave(&u8g2, 0);
-		return;
 	}
 
 	u8g2_ClearBuffer(&u8g2);
@@ -1080,6 +1147,10 @@ must be initialized with valid value prior to use the f_readdir function.
 	finfo.lfsize = _MAX_LFN;
 
 	musicVec.clear();
+	if (IsUsbMscActive())
+	{
+		return;
+	}
 
 	uint8_t oPowerState = W25QXX_GetPowerState();
 	if (oPowerState == 0)
@@ -1090,6 +1161,10 @@ must be initialized with valid value prior to use the f_readdir function.
 	if ((res = f_opendir(&rootdir, "/")) != FR_OK)
 	{
 		printf("Error opening root directory %d\r\n", res);
+		if (oPowerState == 0)
+		{
+			W25QXX_PowerDown();
+		}
 		return;
 	}
 
@@ -1105,15 +1180,18 @@ must be initialized with valid value prior to use the f_readdir function.
 		}
 		//printf("found file %s\r\n", finfo.fname);
 
-		if ((strstr(finfo.fname, ".mp3") || strstr(finfo.fname, ".MP3")) && !strstr(finfo.fname, "test.mp3"))
+		const char *fileName = finfo.lfname[0] != '\0' ? finfo.lfname : finfo.fname;
+		if ((strstr(fileName, ".mp3") || strstr(fileName, ".MP3")) &&
+			strcmp(fileName, "test.mp3") != 0 &&
+			strcmp(fileName, "test.MP3") != 0)
 		{
 			//printf("mp3 file: %s\r\n", finfo.lfname);
-			if (finfo.lfsize == 0)
+			if (fileName[0] == '\0')
 			{
 				continue;
 			}
 			
-			musicVec.push_back(finfo.lfname);
+			musicVec.push_back(fileName);
 			if (musicVec.size() >= MUSIC_MAX)
 			{
 				break;
