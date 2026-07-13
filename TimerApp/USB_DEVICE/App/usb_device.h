@@ -81,6 +81,7 @@ void MX_USB_DEVICE_Init(void);
  * -- Insert functions declaration here --
  */
 /* USER CODE BEGIN FD */
+uint8_t USB_DEVICE_IsConfigured(void);
 
 /* USER CODE END FD */
 /**

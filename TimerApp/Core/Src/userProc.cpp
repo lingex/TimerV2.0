@@ -29,6 +29,9 @@ extern ADC_HandleTypeDef hadc1;
 
 __IO uint32_t btnVal = 0;
 __IO uint8_t usbDet = 0;
+static __IO uint8_t usbHostDetected = 0;
+static __IO uint8_t usbMscReady = 0;
+static uint8_t usbMscOwnsFlash = 0;
 uint32_t batVoltage = 0;
 uint8_t musicVolume = 95;
 uint8_t sleepDispEn = 0;
@@ -64,6 +67,7 @@ void RtcToTm(_RTC *rtc, struct tm *t);
 void TimestampToRTC(void);
 void PlayerStartCallback(void);
 void PlayerStopCallback(void);
+void ProcessUsbState(void);
 
 void _putchar(char character)
 {
@@ -72,7 +76,12 @@ void _putchar(char character)
 
 uint8_t IsUsbMscActive(void)
 {
-	return usbDet != 0 ? 1 : 0;
+	return (usbDet != 0 && usbHostDetected != 0) ? 1 : 0;
+}
+
+uint8_t IsUsbMscReady(void)
+{
+	return usbMscReady != 0 ? 1 : 0;
 }
 
 int main(void)
@@ -116,10 +125,7 @@ int main(void)
 	}
 	printf_("Init config, tick: %lu.\n", HAL_GetTick());
 	LoadConfigs();
-	if (IsUsbMscActive())
-	{
-		f_mount(NULL, "", 0);
-	}
+	ProcessUsbState();
 
 	printf_("Init player, tick: %lu.\n", HAL_GetTick());
 
@@ -150,6 +156,8 @@ int main(void)
 
   while (1)
   {
+	ProcessUsbState();
+
 	__disable_irq();
 	uint32_t reasons = wkupReason;
 	wkupReason = 0;
@@ -226,33 +234,11 @@ int main(void)
 			}
 			if (usbDet == 1)
 			{
-				if (player.IsBusy())
-				{
-					player.Stop();
-				}
-				if (W25QXX_GetPowerState() == 0)
-				{
-					W25QXX_WAKEUP();
-				}
-				f_mount(NULL, "", 0);
 				USB_EN(1);
 			}
 			else
 			{
 				USB_EN(0);
-				FRESULT mountRes = f_mount(&FatFs, "", 1);
-				if (mountRes == FR_OK)
-				{
-					LoadConfigs();
-				}
-				else
-				{
-					printf_("FATFS remount failed! rc:%d, tick: %lu.\n", mountRes, HAL_GetTick());
-				}
-				if (W25QXX_GetPowerState() != 0 && !player.IsBusy())
-				{
-					W25QXX_PowerDown();
-				}
 			}
 			lcdUpdate = 1;
 		}
@@ -278,7 +264,7 @@ int main(void)
 	{
 		sleepTimeout = 0;
 		devState = DevStateSleep;
-		if (W25QXX_GetPowerState() != 0 && usbDet == 0)
+		if (W25QXX_GetPowerState() != 0 && !IsUsbMscActive())
 		{
 			W25QXX_PowerDown();
 		}
@@ -333,6 +319,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		break;
 	case USB_DET_Pin:
 		usbDet = USB_DET;
+		if (usbDet == 0)
+		{
+			usbMscReady = 0;
+			usbHostDetected = 0;
+		}
 		wkupReason |= WKUP_REASON_USB;
 		break;
 	case BTN_GO_Pin:
@@ -393,6 +384,64 @@ uint32_t GetBatAdc(void)
 		}
 	}
 	return samples > 0 ? (temp / samples) : 0;
+}
+
+void ProcessUsbState(void)
+{
+	/* Charge-only ports may reset the USB bus, but only a data host completes enumeration. */
+	if (usbDet != 0 && USB_DEVICE_IsConfigured())
+	{
+		usbHostDetected = 1;
+	}
+
+	if (usbDet != 0)
+	{
+		USB_EN(1);
+	}
+	else
+	{
+		USB_EN(0);
+	}
+
+	if (IsUsbMscActive())
+	{
+		if (usbMscOwnsFlash == 0)
+		{
+			/* Keep MSC unavailable until all application-side Flash access has stopped. */
+			usbMscReady = 0;
+			if (player.IsBusy())
+			{
+				player.Stop();
+			}
+			if (W25QXX_GetPowerState() == 0)
+			{
+				W25QXX_WAKEUP();
+			}
+			f_mount(NULL, "", 0);
+			usbMscOwnsFlash = 1;
+			usbMscReady = 1;
+		}
+		return;
+	}
+
+	usbMscReady = 0;
+	if (usbMscOwnsFlash != 0)
+	{
+		FRESULT mountRes = f_mount(&FatFs, "", 1);
+		usbMscOwnsFlash = 0;
+		if (mountRes == FR_OK)
+		{
+			LoadConfigs();
+		}
+		else
+		{
+			printf_("FATFS remount failed! rc:%d, tick: %lu.\n", mountRes, HAL_GetTick());
+		}
+		if (W25QXX_GetPowerState() != 0 && !player.IsBusy())
+		{
+			W25QXX_PowerDown();
+		}
+	}
 }
 
 // 21th century only
@@ -609,12 +658,12 @@ void PlayerStopCallback(void)
 	{
 		devState = DevStateStandby;
 		sleepTimeout = currTime + SLEEP_TIMEOUT;
-		if (usbDet == 0)
+		if (!IsUsbMscActive())
 		{
 			W25QXX_PowerDown();
 		}
 	}
-	if (W25QXX_GetPowerState() == 1 && usbDet == 0)
+	if (W25QXX_GetPowerState() == 1 && !IsUsbMscActive())
 	{
 		W25QXX_PowerDown();
 	}

@@ -62,6 +62,7 @@ void InitProc(void);
 void SystemClock_Config(void);
 void ADC_Config(void);
 uint8_t IsUsbMscActive(void);
+uint8_t IsUsbMscReady(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -173,7 +174,7 @@ uint8_t IsUsbMscActive(void);
 
 
 #define HARDWARE_VERSION "V2.0"
-#define FIRMWARE_VERSION "V2.6"
+#define FIRMWARE_VERSION "V2.7"
 extern const char *builtTime;
 
 #define APP_BOOTLOADER_ADDR (FLASH_BASE | 0x0000)

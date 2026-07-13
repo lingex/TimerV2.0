@@ -24,6 +24,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "spi_flash.h"
+#include "main.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -180,6 +181,10 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_FS =
 int8_t STORAGE_Init_FS(uint8_t lun)
 {
   /* USER CODE BEGIN 2 */
+  if (!IsUsbMscReady())
+  {
+    return (USBD_FAIL);
+  }
   W25QXX_Init();
   if ( W25QXX_ReadID() == 0x00)
   {
@@ -199,6 +204,10 @@ int8_t STORAGE_Init_FS(uint8_t lun)
 int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
 {
   /* USER CODE BEGIN 3 */
+  if (!IsUsbMscReady())
+  {
+    return (USBD_FAIL);
+  }
   *block_num  = W25QXX_GetSectorCount();
   *block_size = SPI_FLASH_SECTOR_SIZE;
   return (USBD_OK);
@@ -213,7 +222,7 @@ int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_
 int8_t STORAGE_IsReady_FS(uint8_t lun)
 {
   /* USER CODE BEGIN 4 */
-  return (USBD_OK);
+  return IsUsbMscReady() ? (USBD_OK) : (USBD_FAIL);
   /* USER CODE END 4 */
 }
 
@@ -225,7 +234,7 @@ int8_t STORAGE_IsReady_FS(uint8_t lun)
 int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
 {
   /* USER CODE BEGIN 5 */
-  return (USBD_OK);
+  return IsUsbMscReady() ? (USBD_OK) : (USBD_FAIL);
   /* USER CODE END 5 */
 }
 
@@ -237,6 +246,10 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
 int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 6 */
+  if (!IsUsbMscReady())
+  {
+    return (USBD_FAIL);
+  }
   if (STORAGE_CheckRange(blk_addr, blk_len) != USBD_OK)
   {
     return (USBD_FAIL);
@@ -262,6 +275,10 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 7 */
+  if (!IsUsbMscReady())
+  {
+    return (USBD_FAIL);
+  }
   if (STORAGE_CheckRange(blk_addr, blk_len) != USBD_OK)
   {
     return (USBD_FAIL);
